@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="案件管理">
+<meta name="theme-color" content="#1e293b">
+<title>案件管理 - スケジュール確認表</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#fff; --line:#d8dee6; --ink:#1f2933;
+    --sub:#5b6b7b; --accent:#2563eb; --accent-d:#1d4ed8; --soft:#eef3fb;
+    --warn:#dc2626; --ok:#059669;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Meiryo",system-ui,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:14px;}
+  header{background:#1e293b;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:18px;}
+  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.5px;}
+  header .date{margin-left:auto;font-size:13px;color:#cbd5e1;}
+  nav{display:flex;gap:6px;background:#fff;padding:8px 22px;border-bottom:1px solid var(--line);}
+  nav button{border:none;background:transparent;padding:9px 18px;border-radius:8px;
+    cursor:pointer;font-size:14px;font-weight:600;color:var(--sub);}
+  nav button.active{background:var(--accent);color:#fff;}
+  .wrap{padding:22px;max-width:1500px;margin:0 auto;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;}
+  .panel h2{margin:0 0 14px;font-size:16px;}
+  /* form */
+  .form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:600;}
+  .field input,.field select{width:100%;padding:9px 11px;border:1px solid var(--line);
+    border-radius:8px;font-size:14px;background:#fff;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+  .actions{margin-top:16px;display:flex;gap:10px;}
+  .btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-d);}
+  .btn-ghost{background:#eef2f7;color:var(--sub);}
+  .btn-sm{padding:5px 12px;font-size:12px;border-radius:6px;}
+  .btn-del{background:#fee2e2;color:var(--warn);}
+  .btn-edit{background:var(--soft);color:var(--accent);}
+  /* list table */
+  table{border-collapse:collapse;width:100%;}
+  .list-tbl th,.list-tbl td{border:1px solid var(--line);padding:8px 10px;text-align:center;font-size:13px;}
+  .list-tbl th{background:#f1f5f9;color:var(--sub);font-weight:700;}
+  .list-tbl tr:nth-child(even){background:#fafbfc;}
+  .muted{color:#94a3b8;}
+  /* schedule (カレンダー：小さいマス) */
+  .sched-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;
+    -webkit-overflow-scrolling:touch;}
+  .sched{border-collapse:collapse;}
+  .sched th,.sched td{border:1px solid var(--line);padding:0;vertical-align:top;}
+  .sched thead th{background:#1e293b;color:#fff;position:sticky;top:0;z-index:2;
+    text-align:center;font-weight:700;padding:8px 4px;font-size:12px;}
+  .sched th.mhead{width:54px;min-width:54px;}
+  .sched .pcol{position:sticky;left:0;background:#f8fafc;z-index:1;text-align:left;
+    min-width:110px;max-width:130px;font-weight:600;padding:6px 8px;}
+  .sched thead .pcol{background:#0f172a;z-index:3;}
+  .sched td.mcell{padding:2px;height:1px;}
+  /* チェックする小さいマス */
+  .chk{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;border-radius:5px;padding:3px 2px;margin:2px 0;font-size:10px;
+    font-weight:700;line-height:1.15;cursor:pointer;user-select:none;position:relative;
+    min-height:30px;transition:all .12s;}
+  .chk .nm{display:block;}
+  .chk .mk{display:block;font-size:11px;margin-top:1px;opacity:.4;}
+  .chk.done{color:#fff !important;}
+  .chk.done .nm{text-decoration:line-through;opacity:.92;}
+  .chk.done .mk{opacity:1;}
+  .pname{font-weight:700;font-size:13px;}
+  .pmeta{font-size:10px;color:var(--sub);font-weight:400;margin-top:2px;line-height:1.4;}
+  .empty{padding:40px;text-align:center;color:#94a3b8;}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:14px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);}
+  .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
+  .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
+  .sched-bar .spacer{flex:1;}
+  .rule-tbl td,.rule-tbl th{border:1px solid var(--line);padding:6px 10px;font-size:12px;}
+  .rule-tbl th{background:#f1f5f9;}
+  .hint{font-size:12px;color:var(--sub);margin:-6px 0 14px;}
+  /* ===== レスポンシブ（スマホ） ===== */
+  @media (max-width:640px){
+    header{padding:11px 14px;gap:10px;}
+    header h1{font-size:15px;}
+    header .date{font-size:11px;}
+    nav{padding:6px 10px;gap:4px;overflow-x:auto;}
+    nav button{padding:8px 12px;font-size:13px;white-space:nowrap;}
+    .wrap{padding:12px;}
+    .panel{padding:14px;border-radius:10px;margin-bottom:14px;}
+    .form-grid{grid-template-columns:1fr;gap:11px;}
+    .field input,.field select{font-size:16px;padding:11px;} /* iOSズーム防止 */
+    .btn{padding:11px 18px;}
+    .list-tbl th,.list-tbl td{padding:6px 4px;font-size:12px;}
+    .sched th.mhead{width:46px;min-width:46px;}
+    .sched .pcol{min-width:88px;max-width:96px;padding:5px 6px;}
+    .pname{font-size:12px;}
+    .chk{min-height:34px;font-size:9px;} /* タップしやすく */
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>案件管理 — スケジュール確認表</h1>
+  <span class="date" id="today"></span>
+</header>
+<nav>
+  <button id="tab-input" class="active" onclick="show('input')">事前入力情報</button>
+  <button id="tab-sched" onclick="show('sched')">スケジュール確認表</button>
+  <button id="tab-rule" onclick="show('rule')">タスク基準</button>
+</nav>
+
+<div class="wrap">
+  <!-- ============ 入力ページ ============ -->
+  <section id="page-input">
+    <div class="panel">
+      <h2 id="form-title">マンション情報を登録</h2>
+      <p class="hint">※タスクは各月（1〜12月）に自動で割り当てられます。年をまたぐ計算にも対応しています。</p>
+      <div class="form-grid">
+        <div class="field">
+          <label>① マンションコード</label>
+          <input id="f-code" type="text" placeholder="例：2321">
+        </div>
+        <div class="field">
+          <label>② マンション名</label>
+          <input id="f-name" type="text" placeholder="例：天王寺">
+        </div>
+        <div class="field">
+          <label>③ 戸数</label>
+          <input id="f-units" type="number" min="0" placeholder="例：427">
+        </div>
+        <div class="field">
+          <label>④ 決算月</label>
+          <select id="f-settle"></select>
+        </div>
+        <div class="field">
+          <label>⑤ 総会開催月</label>
+          <select id="f-meeting"></select>
+        </div>
+        <div class="field">
+          <label>⑥ 契約満了月 <span class="muted">(申出書計算に使用)</span></label>
+          <select id="f-expire"></select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveProp()">登録する</button>
+        <button class="btn btn-ghost" onclick="resetForm()">クリア</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>登録済みマンション一覧</h2>
+      <table class="list-tbl">
+        <thead>
+          <tr><th>No</th><th>コード</th><th>マンション名</th><th>戸数</th>
+          <th>決算月</th><th>総会月</th><th>契約満了月</th><th>操作</th></tr>
+        </thead>
+        <tbody id="list-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ スケジュールページ ============ -->
+  <section id="page-sched" style="display:none">
+    <div class="panel">
+      <h2>スケジュール確認表（12ヶ月）</h2>
+      <p class="hint">各マスをタップすると「完了」チェックが入ります（もう一度タップで解除）。</p>
+      <div class="sched-bar">
+        <button class="btn btn-sm btn-ghost" onclick="exportData()">バックアップ書出</button>
+        <button class="btn btn-sm btn-ghost" onclick="document.getElementById('imp-file').click()">読込（復元）</button>
+        <input id="imp-file" type="file" accept="application/json" style="display:none" onchange="importData(event)">
+        <span class="spacer"></span>
+        <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="sched-scroll">
+        <table class="sched">
+          <thead><tr id="sched-head"></tr></thead>
+          <tbody id="sched-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 基準ページ ============ -->
+  <section id="page-rule" style="display:none">
+    <div class="panel">
+      <h2>タスク反映基準</h2>
+      <table class="rule-tbl">
+        <thead><tr><th>No</th><th>タスク</th><th>基準</th></tr></thead>
+        <tbody id="rule-body"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ===== タスク定義（順番・色・基準） ===== */
+// base: 'settle'=決算月, 'meeting'=総会月, 'expire'=契約満了月
+// offset: 月のずらし（+翌月 / -前月）
+const TASKS = [
+  {key:'soukai',   name:'総会',           base:'meeting', off:0,  rule:'情報入力から反映',     color:'#2563eb'},
+  {key:'rijikai',  name:'決算理事会',     base:'meeting', off:-1, rule:'総会の前月',           color:'#7c3aed'},
+  {key:'kessan',   name:'決算月',         base:'settle',  off:0,  rule:'情報入力から反映',     color:'#0f766e'},
+  {key:'manryo',   name:'契約満了',       base:'expire',  off:0,  rule:'情報入力から反映',     color:'#b91c1c'},
+  {key:'jimuhoko', name:'年次管理事務報告',base:'settle', off:1,  rule:'決算の翌月',           color:'#0891b2'},
+  {key:'itaku',    name:'管理委託契約書', base:'meeting', off:-2, rule:'総会の2ヶ月前',        color:'#9333ea'},
+  {key:'yotei',    name:'年間業務予定表', base:'settle',  off:-1, rule:'決算の前月',           color:'#0d9488'},
+  {key:'tekisei',  name:'適正化法予定',   base:'settle',  off:-3, rule:'決算の3ヶ月前',        color:'#ca8a04'},
+  {key:'moushide', name:'申出書',         base:'expire',  off:-3, rule:'契約満了の3ヶ月前',    color:'#ea580c'},
+  {key:'parking',  name:'駐車場チェック', base:'settle',  off:-2, rule:'決算の2ヶ月前',        color:'#65a30d'},
+  {key:'kaigi',    name:'マンション会議', base:'settle',  off:-3, rule:'決算の3ヶ月前',        color:'#db2777'},
+  {key:'gijiroku', name:'総会議事録',     base:'meeting', off:1,  rule:'総会の翌月',           color:'#4f46e5'},
+];
+
+const STORE = 'kanken_props_v1';
+const CHECKS = 'kanken_checks_v1';
+let props = JSON.parse(localStorage.getItem(STORE) || '[]');
+let checks = JSON.parse(localStorage.getItem(CHECKS) || '{}'); // { propId: { taskKey:true } }
+let editIdx = -1;
+
+/* 物件の識別子（コード優先・無ければ名前） */
+function pid(p){ return (p.code && String(p.code).trim()) ? 'c:'+p.code : 'n:'+p.name; }
+function persistChecks(){ localStorage.setItem(CHECKS, JSON.stringify(checks)); }
+function toggleCheck(id, key){
+  checks[id] = checks[id] || {};
+  if(checks[id][key]) delete checks[id][key]; else checks[id][key]=true;
+  if(!Object.keys(checks[id]).length) delete checks[id];
+  persistChecks(); renderSched();
+}
+function resetChecks(){
+  if(!confirm('すべての完了チェックを解除します。よろしいですか？')) return;
+  checks={}; persistChecks(); renderSched();
+}
+
+/* ===== 月計算 ===== */
+function shift(month, off){ return ((month - 1 + off) % 12 + 12) % 12 + 1; }
+function baseMonth(p, base){
+  return base==='settle' ? +p.settle : base==='meeting' ? +p.meeting : +p.expire;
+}
+
+/* ===== 初期化：月セレクト ===== */
+function fillMonthSelects(){
+  const opts = '<option value="">—</option>' +
+    Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}月</option>`).join('');
+  ['f-settle','f-meeting','f-expire'].forEach(id=>document.getElementById(id).innerHTML=opts);
+}
+
+/* ===== 保存 ===== */
+function saveProp(){
+  const code=val('f-code'), name=val('f-name'), units=val('f-units'),
+        settle=val('f-settle'), meeting=val('f-meeting'), expire=val('f-expire');
+  if(!name){ alert('マンション名を入力してください'); return; }
+  if(!settle || !meeting){ alert('決算月と総会開催月を選択してください'); return; }
+  const rec={code,name,units,settle,meeting,expire};
+  if(editIdx>=0){ props[editIdx]=rec; editIdx=-1; }
+  else { props.push(rec); }
+  persist(); resetForm(); renderList(); renderSched();
+}
+function persist(){ localStorage.setItem(STORE, JSON.stringify(props)); }
+function val(id){ return document.getElementById(id).value.trim(); }
+
+function resetForm(){
+  ['f-code','f-name','f-units','f-settle','f-meeting','f-expire']
+    .forEach(id=>document.getElementById(id).value='');
+  editIdx=-1;
+  document.getElementById('form-title').textContent='マンション情報を登録';
+}
+function editProp(i){
+  const p=props[i];
+  setv('f-code',p.code); setv('f-name',p.name); setv('f-units',p.units);
+  setv('f-settle',p.settle); setv('f-meeting',p.meeting); setv('f-expire',p.expire);
+  editIdx=i;
+  document.getElementById('form-title').textContent='マンション情報を編集';
+  show('input'); window.scrollTo({top:0,behavior:'smooth'});
+}
+function setv(id,v){ document.getElementById(id).value=v||''; }
+function delProp(i){
+  if(!confirm(`「${props[i].name}」を削除しますか？`)) return;
+  props.splice(i,1); persist(); renderList(); renderSched();
+}
+
+/* ===== 一覧描画 ===== */
+function renderList(){
+  const b=document.getElementById('list-body');
+  if(!props.length){ b.innerHTML='<tr><td colspan="8" class="muted" style="padding:24px">未登録です</td></tr>'; return; }
+  b.innerHTML=props.map((p,i)=>`
+    <tr>
+      <td>${i+1}</td><td>${esc(p.code)}</td><td style="text-align:left">${esc(p.name)}</td>
+      <td>${esc(p.units)}</td><td>${p.settle?p.settle+'月':'—'}</td>
+      <td>${p.meeting?p.meeting+'月':'—'}</td><td>${p.expire?p.expire+'月':'—'}</td>
+      <td>
+        <button class="btn btn-sm btn-edit" onclick="editProp(${i})">編集</button>
+        <button class="btn btn-sm btn-del" onclick="delProp(${i})">削除</button>
+      </td>
+    </tr>`).join('');
+}
+
+/* ===== スケジュール描画 ===== */
+function renderSched(){
+  const head=document.getElementById('sched-head');
+  head.innerHTML='<th class="pcol">マンション</th>'+
+    Array.from({length:12},(_,i)=>`<th class="mhead">${i+1}月</th>`).join('');
+  const body=document.getElementById('sched-body');
+  if(!props.length){ body.innerHTML='<tr><td colspan="13" class="empty">マンションを登録するとここに表示されます</td></tr>'; return; }
+
+  body.innerHTML=props.map(p=>{
+    const id=pid(p);
+    const cdone=checks[id]||{};
+    // 各月へタスクを割り当て
+    const cells=Array.from({length:12},()=>[]);
+    TASKS.forEach(t=>{
+      const bm=baseMonth(p,t.base);
+      if(!bm) return; // 契約満了未入力などはスキップ
+      const m=shift(bm,t.off);
+      cells[m-1].push(t);
+    });
+    const tds=cells.map(list=>`<td class="mcell">${list.map(t=>{
+      const on=!!cdone[t.key];
+      const style=on
+        ? `background:${t.color};border:1px solid ${t.color}`
+        : `background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`;
+      return `<div class="chk${on?' done':''}" style="${style}" `+
+        `onclick="toggleCheck('${id.replace(/'/g,"\\'")}','${t.key}')">`+
+        `<span class="nm">${t.name}</span><span class="mk">${on?'✓':'□'}</span></div>`;
+    }).join('')}</td>`).join('');
+    const meta=[p.code?'#'+p.code:'',p.units?p.units+'戸':'',
+      '決算'+p.settle+'月','総会'+p.meeting+'月',p.expire?'満了'+p.expire+'月':'']
+      .filter(Boolean).join(' / ');
+    return `<tr><td class="pcol"><div class="pname">${esc(p.name)}</div>
+      <div class="pmeta">${meta}</div></td>${tds}</tr>`;
+  }).join('');
+}
+function hex2bg(h){ return h+'18'; }
+function hex2bd(h){ return h+'55'; }
+
+/* ===== 凡例・基準表 ===== */
+function renderLegend(){
+  document.getElementById('legend').innerHTML=TASKS.map(t=>
+    `<span><i style="background:${t.color}"></i>${t.name}</span>`).join('');
+}
+function renderRules(){
+  document.getElementById('rule-body').innerHTML=TASKS.map((t,i)=>
+    `<tr><td>${i+1}</td><td><span class="tag" style="display:inline-block;background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}">${t.name}</span></td><td>${t.rule}</td></tr>`).join('');
+}
+
+/* ===== タブ ===== */
+function show(p){
+  ['input','sched','rule'].forEach(x=>{
+    document.getElementById('page-'+x).style.display = x===p?'block':'none';
+    document.getElementById('tab-'+x).classList.toggle('active', x===p);
+  });
+  if(p==='sched') renderSched();
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* ===== バックアップ書出/読込（PC↔携帯のデータ移行用） ===== */
+function exportData(){
+  const data={props,checks,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='案件管理バックアップ_'+new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d.props)) throw 0;
+      if(!confirm('現在のデータを読込内容で置き換えます。よろしいですか？')) return;
+      props=d.props; checks=d.checks||{};
+      persist(); persistChecks();
+      renderList(); renderSched();
+      alert('読み込みました（'+props.length+'件）');
+    }catch(e){ alert('ファイルを読み込めませんでした'); }
+    ev.target.value='';
+  };
+  r.readAsText(file);
+}
+
+/* ===== 起動 ===== */
+(function init(){
+  document.getElementById('today').textContent =
+    '本日：'+new Date().toLocaleDateString('ja-JP');
+  fillMonthSelects(); renderList(); renderLegend(); renderRules(); renderSched();
+})();
+</script>
+</body>
+</html>
