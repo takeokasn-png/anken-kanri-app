@@ -91,7 +91,7 @@
   .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
   .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
   .sched-bar .spacer{flex:1;}
-  .year-nav{display:flex;align-items:center;gap:8px;}
+  .year-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .year-label{font-size:18px;font-weight:700;min-width:72px;text-align:center;color:var(--accent);}
   /* やることリスト（カード・グリッド） */
   /* やること追加バー */
@@ -213,18 +213,17 @@
       <h2>スケジュール確認表（12ヶ月）</h2>
       <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：総会→総会報告→総会完了→未着手に戻る）。進捗は西暦年ごとに記録されます。</p>
       <div class="sched-bar">
-        <div class="year-nav">
-          <button class="btn btn-sm btn-ghost" onclick="changeYear(-1)">◀ 前年</button>
-          <span id="year-label" class="year-label"></span>
-          <button class="btn btn-sm btn-ghost" onclick="changeYear(1)">翌年 ▶</button>
-        </div>
-        <span class="spacer" style="flex:0 0 12px"></span>
         <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
         <button class="btn btn-sm btn-ghost" id="btn-dark" onclick="toggleDark()">🌙 ダーク</button>
         <span class="spacer"></span>
         <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
       </div>
       <div class="legend" id="legend"></div>
+      <div class="year-nav">
+        <button class="btn btn-sm btn-ghost" onclick="changeYear(-1)">◀ 前年</button>
+        <span id="year-label" class="year-label"></span>
+        <button class="btn btn-sm btn-ghost" onclick="changeYear(1)">翌年 ▶</button>
+      </div>
       <div class="sched-scroll">
         <table class="sched">
           <thead><tr id="sched-head"></tr></thead>
