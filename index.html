@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="案件管理">
 <meta name="theme-color" content="#1e293b">
-<title>案件管理 - スケジュール確認表</title>
+<title>案件管理 - タスク管理表</title>
 <style>
   :root{
     --bg:#f4f6f9; --panel:#fff; --line:#d8dee6; --ink:#1f2933;
@@ -78,7 +78,7 @@
   .chk.done{color:#fff !important;}
   .chk.done .nm{text-decoration:line-through;opacity:.95;}
   .chk.done .mk{opacity:1;}
-  .chk.nocheck{cursor:default;opacity:.85;border-style:dashed !important;}
+  .chk.nocheck{cursor:default;}
   .reorder{display:flex;gap:3px;margin-top:4px;}
   .mini{border:1px solid var(--line);background:var(--panel);color:var(--sub);
     border-radius:5px;font-size:11px;line-height:1;padding:2px 5px;cursor:pointer;font-weight:700;}
@@ -147,7 +147,7 @@
 </head>
 <body>
 <header>
-  <h1>案件管理 — スケジュール確認表</h1>
+  <h1>案件管理 — タスク管理表</h1>
   <span class="date" id="today"></span>
 </header>
 <nav>
@@ -210,7 +210,7 @@
   <!-- ============ スケジュールページ ============ -->
   <section id="page-sched" style="display:none">
     <div class="panel">
-      <h2>スケジュール確認表（12ヶ月）</h2>
+      <h2>タスク管理表（12ヶ月）</h2>
       <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：総会→総会報告→総会完了→未着手に戻る）。進捗は西暦年ごとに記録されます。</p>
       <div class="sched-bar">
         <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
@@ -445,7 +445,7 @@ function renderSched(){
     });
     const tds=cells.map(list=>`<td class="mcell">${list.map(t=>{
       if(t.noCheck){
-        return `<div class="chk nocheck" style="background:${hex2bg(t.color)};color:${t.color};border:1px dashed ${hex2bd(t.color)}"><span class="nm">${t.label}</span></div>`;
+        return `<div class="chk nocheck" style="background:${t.color};color:#fff;border:1px solid ${t.color}"><span class="nm">${t.label}</span></div>`;
       }
       const idx=cdone[t.key]||0, last=t.stages.length-1, label=t.stages[Math.min(idx,last)];
       let cls,style,mark;
