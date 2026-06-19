@@ -55,9 +55,7 @@
   .list-tbl th{background:var(--thbg);color:var(--sub);font-weight:700;}
   .list-tbl tr:nth-child(even){background:rgba(127,127,127,.05);}
   .muted{color:#94a3b8;}
-  /* ===== スケジュール：左=表 / 右=やることリスト ===== */
-  .sched-layout{display:flex;gap:16px;align-items:flex-start;}
-  .sched-main{flex:1;min-width:0;}
+  /* ===== タスク管理表 ===== */
   .sched-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;
     -webkit-overflow-scrolling:touch;}
   .sched{border-collapse:collapse;}
@@ -93,10 +91,9 @@
   .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
   .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
   .sched-bar .spacer{flex:1;}
-  /* やることリスト（右） */
-  .todo-side{width:300px;flex-shrink:0;}
-  .todo-h{font-size:14px;margin:0 0 10px;color:var(--sub);}
-  .todo-card{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;
+  /* やることリスト（カード・グリッド） */
+  .todo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .todo-card{border:1px solid var(--line);border-radius:10px;
     background:var(--panel);overflow:hidden;}
   .todo-card-h{background:var(--thbg);padding:8px 12px;font-weight:700;font-size:13px;
     display:flex;align-items:center;gap:6px;}
@@ -115,10 +112,6 @@
   .rule-tbl th{background:var(--thbg);}
   .hint{font-size:12px;color:var(--sub);margin:-6px 0 14px;}
   /* ===== レスポンシブ（スマホ） ===== */
-  @media (max-width:900px){
-    .sched-layout{flex-direction:column;}
-    .todo-side{width:100%;}
-  }
   @media (max-width:640px){
     header{padding:11px 14px;gap:10px;}
     header h1{font-size:15px;}
@@ -145,8 +138,9 @@
   <span class="date" id="today"></span>
 </header>
 <nav>
-  <button id="tab-input" class="active" onclick="show('input')">事前入力情報</button>
-  <button id="tab-sched" onclick="show('sched')">スケジュール確認表</button>
+  <button id="tab-input" class="active" onclick="show('input')">入力情報</button>
+  <button id="tab-sched" onclick="show('sched')">タスク管理表</button>
+  <button id="tab-todo" onclick="show('todo')">やることリスト</button>
   <button id="tab-rule" onclick="show('rule')">タスク基準</button>
 </nav>
 
@@ -215,17 +209,25 @@
         <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
       </div>
       <div class="legend" id="legend"></div>
-      <div class="sched-layout">
-        <div class="sched-main">
-          <div class="sched-scroll">
-            <table class="sched">
-              <thead><tr id="sched-head"></tr></thead>
-              <tbody id="sched-body"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="todo-side" id="todo-side"></div>
+      <div class="sched-scroll">
+        <table class="sched">
+          <thead><tr id="sched-head"></tr></thead>
+          <tbody id="sched-body"></tbody>
+        </table>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ やることリストページ ============ -->
+  <section id="page-todo" style="display:none">
+    <div class="panel">
+      <h2>物件別 やることリスト</h2>
+      <p class="hint">各物件ごとに自由なメモを追加できます。完了したらタップでチェック。</p>
+      <div class="sched-bar">
+        <button class="btn btn-sm btn-ghost" id="btn-edit2" onclick="toggleEdit()">並び替え</button>
+        <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
+      </div>
+      <div class="todo-grid" id="todo-side"></div>
     </div>
   </section>
 
@@ -248,31 +250,31 @@
    stages: タップで進む進捗段階（最後＝完了）。noCheck=true は表記のみ */
 const TASKS = [
   {key:'soukai',   base:'meeting', off:0,  rule:'情報入力から反映',  color:'#2563eb',
-    stages:['総会','総会報告','総会完了']},
+    stages:['総会','総会報告中','総会完了']},
   {key:'rijikai',  base:'meeting', off:-1, rule:'総会の前月',        color:'#7c3aed',
     stages:['決算理事会','決算理事会完了']},
   {key:'kessan',   base:'settle',  off:0,  rule:'情報入力から反映',  color:'#0f766e',
     noCheck:true, label:'決算'},
   {key:'manryo',   base:'expire',  off:0,  rule:'情報入力から反映',  color:'#b91c1c',
-    stages:['契約満了','契約完了申請','契約完了']},
+    stages:['契約満期','契約完了申請中','契約完了']},
   {key:'jimuhoko', base:'settle',  off:1,  rule:'決算の翌月',        color:'#0891b2',
-    stages:['管理事務報告','管理事務報告書発行','管理事務報告完了']},
+    stages:['管理事務報告','管理事務報告書申請中','管理事務報告完了']},
   {key:'itaku',    base:'meeting', off:-2, rule:'総会の2ヶ月前',     color:'#9333ea',
-    stages:['委託契約書','契約書変更申請','契約書正式申請','契約書捺印伺','委託契約書完了']},
+    stages:['委託契約書','契約書変更申請中','契約書正式申請中','契約書捺印伺中','委託契約書完了']},
   {key:'yotei',    base:'settle',  off:-1, rule:'決算の前月',        color:'#0d9488',
-    stages:['年間業務予定表','年間業務予定表申請','年間業務予定表完了']},
+    stages:['年間業務予定表','年間業務予定表申請中','年間業務予定表完了']},
   {key:'tekisei',  base:'settle',  off:-3, rule:'決算の3ヶ月前',     color:'#ca8a04',
     stages:['適正化法予定','適正化法予定完了']},
   {key:'moushide', base:'expire',  off:-3, rule:'契約満了の3ヶ月前', color:'#ea580c',
-    stages:['申出書','申出書申請','申出書完了']},
+    stages:['申出書','申出書申請中','申出書完了']},
   {key:'parking',  base:'settle',  off:-2, rule:'決算の2ヶ月前',     color:'#65a30d',
     stages:['駐車場チェック','駐車場チェック完了']},
   {key:'kaigi',    base:'settle',  off:-3, rule:'決算の3ヶ月前',     color:'#db2777',
     stages:['マンション会議','マンション会議完了']},
   {key:'gijiroku', base:'meeting', off:1,  rule:'総会の翌月',        color:'#4f46e5',
-    stages:['総会議事録','総会議事録作成','総会議事録捺印','総会議事録完了']},
+    stages:['総会議事録','総会議事録作成','総会議事録捺印依頼中','総会議事録完了']},
   {key:'shushi',   base:'settle',  off:1,  rule:'決算の翌月',        color:'#be123c',
-    stages:['収支仮締め','仮締め申請','収支仮締め完了']},
+    stages:['収支仮締め','仮締め申請中','収支仮締め完了']},
 ];
 function taskName(t){ return t.label || (t.stages ? t.stages[0] : ''); }
 
@@ -417,8 +419,8 @@ function hex2bd(h){ return h+'55'; }
 /* ===== やることリスト（右） ===== */
 function renderTodos(){
   const el=document.getElementById('todo-side');
-  if(!props.length){ el.innerHTML=''; return; }
-  el.innerHTML='<h3 class="todo-h">物件別 やることリスト</h3>'+props.map((p,pi)=>{
+  if(!props.length){ el.innerHTML='<div class="empty">マンションを登録するとここに表示されます</div>'; return; }
+  el.innerHTML=props.map((p,pi)=>{
     const id=pid(p), items=todos[id]||[];
     const rows=items.map((it,j)=>`
       <li class="todo-item ${it.done?'done':''}">
@@ -461,14 +463,19 @@ function moveTodo(pi,j,dir){
 /* ===== 編集（並び替え）モード & ダークモード ===== */
 function toggleEdit(){
   editMode=!editMode;
-  document.getElementById('btn-edit').classList.toggle('active',editMode);
-  document.getElementById('btn-edit').textContent=editMode?'並び替え終了':'並び替え';
+  ['btn-edit','btn-edit2'].forEach(id=>{
+    const b=document.getElementById(id); if(!b) return;
+    b.classList.toggle('active',editMode);
+    b.textContent=editMode?'並び替え終了':'並び替え';
+  });
   renderSched(); renderTodos();
 }
 function toggleDark(){
   const on=document.body.classList.toggle('dark');
   localStorage.setItem(DARK,on?'1':'0');
-  document.getElementById('btn-dark').textContent=on?'☀ ライト':'🌙 ダーク';
+  ['btn-dark','btn-dark2'].forEach(id=>{
+    const b=document.getElementById(id); if(b) b.textContent=on?'☀ ライト':'🌙 ダーク';
+  });
 }
 
 /* ===== 凡例・基準表 ===== */
@@ -488,11 +495,12 @@ function renderRules(){
 
 /* ===== タブ ===== */
 function show(p){
-  ['input','sched','rule'].forEach(x=>{
+  ['input','sched','todo','rule'].forEach(x=>{
     document.getElementById('page-'+x).style.display = x===p?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active', x===p);
   });
-  if(p==='sched'){ renderSched(); renderTodos(); }
+  if(p==='sched') renderSched();
+  if(p==='todo') renderTodos();
 }
 
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -529,7 +537,7 @@ function importData(ev){
 (function init(){
   document.getElementById('today').textContent='本日：'+new Date().toLocaleDateString('ja-JP');
   if(localStorage.getItem(DARK)==='1'){ document.body.classList.add('dark');
-    document.getElementById('btn-dark').textContent='☀ ライト'; }
+    ['btn-dark','btn-dark2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀ ライト';}); }
   fillMonthSelects(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos();
 })();
 </script>
