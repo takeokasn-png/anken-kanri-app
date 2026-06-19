@@ -91,23 +91,35 @@
   .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
   .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
   .sched-bar .spacer{flex:1;}
+  .year-nav{display:flex;align-items:center;gap:8px;}
+  .year-label{font-size:18px;font-weight:700;min-width:72px;text-align:center;color:var(--accent);}
   /* やることリスト（カード・グリッド） */
-  .todo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-  .todo-card{border:1px solid var(--line);border-radius:10px;
-    background:var(--panel);overflow:hidden;}
-  .todo-card-h{background:var(--thbg);padding:8px 12px;font-weight:700;font-size:13px;
-    display:flex;align-items:center;gap:6px;}
-  .todo-list{list-style:none;margin:0;padding:6px 10px;}
-  .todo-item{display:flex;align-items:center;gap:7px;padding:5px 2px;font-size:13px;
-    border-bottom:1px dashed var(--line);}
-  .todo-item:last-child{border-bottom:none;}
+  /* やること追加バー */
+  .todo-addbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;
+    padding:12px;background:var(--thbg);border:1px solid var(--line);border-radius:10px;}
+  .todo-addbar select,.todo-addbar input{padding:8px 10px;border:1px solid var(--line);
+    border-radius:7px;font-size:13px;background:var(--panel);color:var(--ink);}
+  .todo-addbar .ti{flex:1;min-width:160px;}
+  /* 優先度グループ */
+  .pri-group{margin-bottom:18px;}
+  .pri-head{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;
+    margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid var(--line);}
+  .pri-badge{display:inline-block;font-size:11px;font-weight:700;color:#fff;
+    border-radius:5px;padding:2px 9px;}
+  .pri-high .pri-badge,.pb-high{background:#dc2626;}
+  .pri-mid  .pri-badge,.pb-mid {background:#d97706;}
+  .pri-low  .pri-badge,.pb-low {background:#0891b2;}
+  .todo-list{list-style:none;margin:0;padding:0;}
+  .todo-item{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13px;
+    border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel);}
+  .todo-item.done{opacity:.6;}
   .todo-item.done .todo-txt{text-decoration:line-through;color:#94a3b8;}
-  .todo-chk{cursor:pointer;font-weight:700;color:var(--accent);width:16px;text-align:center;}
+  .todo-chk{cursor:pointer;font-weight:700;color:var(--accent);width:18px;text-align:center;font-size:15px;}
+  .todo-prop{font-size:11px;color:var(--sub);background:var(--soft);border-radius:5px;
+    padding:2px 7px;white-space:nowrap;}
   .todo-txt{flex:1;cursor:pointer;word-break:break-word;}
-  .todo-empty{color:#94a3b8;font-size:12px;padding:4px 2px;}
-  .todo-add{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line);}
-  .todo-add input{flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:7px;
-    font-size:13px;background:var(--panel);color:var(--ink);}
+  .pb{display:inline-block;font-size:10px;font-weight:700;color:#fff;border-radius:4px;padding:1px 6px;}
+  .todo-empty{color:#94a3b8;font-size:13px;padding:8px 2px;}
   .rule-tbl td,.rule-tbl th{border:1px solid var(--line);padding:6px 10px;font-size:12px;}
   .rule-tbl th{background:var(--thbg);}
   .hint{font-size:12px;color:var(--sub);margin:-6px 0 14px;}
@@ -128,7 +140,8 @@
     .sched .pcol{min-width:90px;max-width:100px;padding:5px 6px;}
     .pname{font-size:12px;}
     .chk{min-height:34px;font-size:9px;} /* タップしやすく */
-    .todo-add input{font-size:16px;}
+    .todo-addbar select,.todo-addbar input{font-size:16px;}
+    .todo-addbar .ti{min-width:0;flex-basis:100%;}
   }
 </style>
 </head>
@@ -198,13 +211,16 @@
   <section id="page-sched" style="display:none">
     <div class="panel">
       <h2>スケジュール確認表（12ヶ月）</h2>
-      <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：総会→総会報告→総会完了→未着手に戻る）。</p>
+      <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：総会→総会報告→総会完了→未着手に戻る）。進捗は西暦年ごとに記録されます。</p>
       <div class="sched-bar">
+        <div class="year-nav">
+          <button class="btn btn-sm btn-ghost" onclick="changeYear(-1)">◀ 前年</button>
+          <span id="year-label" class="year-label"></span>
+          <button class="btn btn-sm btn-ghost" onclick="changeYear(1)">翌年 ▶</button>
+        </div>
+        <span class="spacer" style="flex:0 0 12px"></span>
         <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
         <button class="btn btn-sm btn-ghost" id="btn-dark" onclick="toggleDark()">🌙 ダーク</button>
-        <button class="btn btn-sm btn-ghost" onclick="exportData()">バックアップ書出</button>
-        <button class="btn btn-sm btn-ghost" onclick="document.getElementById('imp-file').click()">読込（復元）</button>
-        <input id="imp-file" type="file" accept="application/json" style="display:none" onchange="importData(event)">
         <span class="spacer"></span>
         <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
       </div>
@@ -221,13 +237,21 @@
   <!-- ============ やることリストページ ============ -->
   <section id="page-todo" style="display:none">
     <div class="panel">
-      <h2>物件別 やることリスト</h2>
-      <p class="hint">各物件ごとに自由なメモを追加できます。完了したらタップでチェック。</p>
-      <div class="sched-bar">
-        <button class="btn btn-sm btn-ghost" id="btn-edit2" onclick="toggleEdit()">並び替え</button>
+      <h2>やることリスト（優先度順）</h2>
+      <p class="hint">優先度ごとにまとめて表示されます（高→中→低）。完了したらタップでチェック。</p>
+      <div class="todo-addbar">
+        <select id="todo-prop"></select>
+        <select id="todo-pri">
+          <option value="high">優先度：高</option>
+          <option value="mid" selected>優先度：中</option>
+          <option value="low">優先度：低</option>
+        </select>
+        <input class="ti" id="todo-in" placeholder="やること内容を入力…" onkeydown="if(event.key==='Enter')addTodo()">
+        <button class="btn btn-sm btn-primary" onclick="addTodo()">追加</button>
+        <span class="spacer" style="flex:1"></span>
         <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
       </div>
-      <div class="todo-grid" id="todo-side"></div>
+      <div id="todo-side"></div>
     </div>
   </section>
 
@@ -280,20 +304,43 @@ function taskName(t){ return t.label || (t.stages ? t.stages[0] : ''); }
 
 const STORE='kanken_props_v1', CHECKS='kanken_checks_v1',
       TODOS='kanken_todos_v1', DARK='kanken_dark_v1';
+const YEARSEL='kanken_year_v1';
 let props  = JSON.parse(localStorage.getItem(STORE)  || '[]');
-let checks = JSON.parse(localStorage.getItem(CHECKS) || '{}'); // { id:{ key:stageIndex } }
-let todos  = JSON.parse(localStorage.getItem(TODOS)  || '{}'); // { id:[ {t,done} ] }
+let checks = JSON.parse(localStorage.getItem(CHECKS) || '{}'); // { year:{ id:{ key:stageIndex } } }
+let todos  = JSON.parse(localStorage.getItem(TODOS)  || '{}'); // { id:[ {t,done,pri} ] }
 let editIdx=-1, editMode=false;
+let curYear = +localStorage.getItem(YEARSEL) || new Date().getFullYear();
 
-/* 旧データ(boolean)→段階indexへ移行 */
+/* 旧データ移行 */
 (function migrate(){
-  let changed=false;
-  for(const id in checks) for(const k in checks[id]){
-    if(checks[id][k]===true){ const t=TASKS.find(x=>x.key===k);
-      checks[id][k]= t&&t.stages ? t.stages.length-1 : 1; changed=true; }
+  // (a) boolean → 段階index
+  for(const a in checks) for(const b in checks[a]){
+    const lvl=checks[a][b];
+    if(lvl===true){ const t=TASKS.find(x=>x.key===b);
+      checks[a][b]= t&&t.stages ? t.stages.length-1 : 1; }
   }
-  if(changed) localStorage.setItem(CHECKS, JSON.stringify(checks));
+  // (b) 年スコープ化：旧フラット形式 { id:{key:idx} } を当年配下へ移動
+  const top=Object.keys(checks);
+  const isFlat=top.some(k=>k.startsWith('c:')||k.startsWith('n:'));
+  if(isFlat){
+    const moved={}; const y=String(new Date().getFullYear());
+    moved[y]=checks; checks=moved;
+  }
+  localStorage.setItem(CHECKS, JSON.stringify(checks));
+  // (c) 優先度未設定のやることは「中」に
+  let tch=false;
+  for(const id in todos) for(const it of todos[id]){ if(!it.pri){ it.pri='mid'; tch=true; } }
+  if(tch) localStorage.setItem(TODOS, JSON.stringify(todos));
 })();
+
+const PRI={high:{label:'高',order:0},mid:{label:'中',order:1},low:{label:'低',order:2}};
+
+/* 選択中の年のチェック集合を取得（無ければ作る） */
+function yearChecks(){
+  const y=String(curYear);
+  checks[y]=checks[y]||{};
+  return checks[y];
+}
 
 /* 物件の識別子（コード優先・無ければ名前） */
 function pid(p){ return (p.code && String(p.code).trim()) ? 'c:'+p.code : 'n:'+p.name; }
@@ -301,19 +348,25 @@ function persist(){ localStorage.setItem(STORE, JSON.stringify(props)); }
 function persistChecks(){ localStorage.setItem(CHECKS, JSON.stringify(checks)); }
 function persistTodos(){ localStorage.setItem(TODOS, JSON.stringify(todos)); }
 
-/* ===== 段階チェック ===== */
+/* ===== 段階チェック（選択中の年スコープ） ===== */
 function cycleStage(id, key){
   const t=TASKS.find(x=>x.key===key); if(!t||t.noCheck) return;
-  let idx=(checks[id]&&checks[id][key])||0;
+  const yc=yearChecks();
+  let idx=(yc[id]&&yc[id][key])||0;
   idx=(idx+1)%t.stages.length;
-  checks[id]=checks[id]||{};
-  if(idx===0) delete checks[id][key]; else checks[id][key]=idx;
-  if(!Object.keys(checks[id]).length) delete checks[id];
+  yc[id]=yc[id]||{};
+  if(idx===0) delete yc[id][key]; else yc[id][key]=idx;
+  if(!Object.keys(yc[id]).length) delete yc[id];
   persistChecks(); renderSched();
 }
+function changeYear(delta){
+  curYear+=delta; localStorage.setItem(YEARSEL,curYear);
+  document.getElementById('year-label').textContent=curYear+'年';
+  renderSched();
+}
 function resetChecks(){
-  if(!confirm('すべての進捗チェックを解除します。よろしいですか？')) return;
-  checks={}; persistChecks(); renderSched();
+  if(!confirm(curYear+'年の進捗チェックをすべて解除します。よろしいですか？')) return;
+  delete checks[String(curYear)]; persistChecks(); renderSched();
 }
 
 /* ===== 月計算 ===== */
@@ -383,8 +436,9 @@ function renderSched(){
   const body=document.getElementById('sched-body');
   if(!props.length){ body.innerHTML='<tr><td colspan="13" class="empty">マンションを登録するとここに表示されます</td></tr>'; return; }
 
+  const yc=yearChecks();
   body.innerHTML=props.map((p,pi)=>{
-    const id=pid(p), cdone=checks[id]||{};
+    const id=pid(p), cdone=yc[id]||{};
     const cells=Array.from({length:12},()=>[]);
     TASKS.forEach(t=>{
       const bm=baseMonth(p,t.base); if(!bm) return;
@@ -416,48 +470,59 @@ function hex2bg(h){ return h+'18'; }
 function hex2mid(h){ return h+'33'; }
 function hex2bd(h){ return h+'55'; }
 
-/* ===== やることリスト（右） ===== */
+/* ===== やることリスト（優先度順・全物件統合） ===== */
+function propName(id){ const p=props.find(x=>pid(x)===id); return p?p.name:'(削除済)'; }
+function fillTodoProps(){
+  const sel=document.getElementById('todo-prop');
+  if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=props.length
+    ? props.map(p=>`<option value="${esc(pid(p))}">${esc(p.name)}</option>`).join('')
+    : '<option value="">物件を登録してください</option>';
+  if(cur) sel.value=cur;
+}
 function renderTodos(){
+  fillTodoProps();
   const el=document.getElementById('todo-side');
   if(!props.length){ el.innerHTML='<div class="empty">マンションを登録するとここに表示されます</div>'; return; }
-  el.innerHTML=props.map((p,pi)=>{
-    const id=pid(p), items=todos[id]||[];
-    const rows=items.map((it,j)=>`
+  // 全物件のやることを1配列に集約（優先度→未完了優先で並べる）
+  const all=[];
+  for(const id in todos){ (todos[id]||[]).forEach((it,j)=>all.push({id,j,it})); }
+  let html='';
+  ['high','mid','low'].forEach(pk=>{
+    const group=all.filter(x=>x.it.pri===pk)
+      .sort((a,b)=> (a.it.done-b.it.done)); // 未完了を上に
+    const rows=group.length ? group.map(({id,j,it})=>`
       <li class="todo-item ${it.done?'done':''}">
-        <span class="todo-chk" onclick="toggleTodo(${pi},${j})">${it.done?'✓':'○'}</span>
-        <span class="todo-txt" onclick="toggleTodo(${pi},${j})">${esc(it.t)}</span>
-        ${editMode?`<button class="mini" onclick="moveTodo(${pi},${j},-1)">▲</button>
-          <button class="mini" onclick="moveTodo(${pi},${j},1)">▼</button>`:''}
-        <button class="mini del" onclick="delTodo(${pi},${j})">×</button>
-      </li>`).join('') || '<li class="todo-empty">やること未登録</li>';
-    return `<div class="todo-card">
-      <div class="todo-card-h">${esc(p.name)}</div>
-      <ul class="todo-list">${rows}</ul>
-      <div class="todo-add">
-        <input id="todo-in-${pi}" placeholder="やること追加…" onkeydown="if(event.key==='Enter')addTodo(${pi})">
-        <button class="btn btn-sm btn-primary" onclick="addTodo(${pi})">新規</button>
-      </div>
-    </div>`;
-  }).join('');
+        <span class="todo-chk" onclick="toggleTodo('${jsq(id)}',${j})">${it.done?'✓':'○'}</span>
+        <span class="todo-prop">${esc(propName(id))}</span>
+        <span class="todo-txt" onclick="toggleTodo('${jsq(id)}',${j})">${esc(it.t)}</span>
+        <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
+      </li>`).join('') : `<li class="todo-empty">なし</li>`;
+    html+=`<div class="pri-group pri-${pk}">
+      <h3 class="pri-head"><span class="pri-badge">優先度 ${PRI[pk].label}</span></h3>
+      <ul class="todo-list">${rows}</ul></div>`;
+  });
+  el.innerHTML=html;
 }
-function addTodo(pi){
-  const inp=document.getElementById('todo-in-'+pi), v=inp.value.trim(); if(!v) return;
-  const id=pid(props[pi]); todos[id]=todos[id]||[]; todos[id].push({t:v,done:false});
-  persistTodos(); renderTodos();
+function addTodo(){
+  const id=document.getElementById('todo-prop').value;
+  const pri=document.getElementById('todo-pri').value;
+  const inp=document.getElementById('todo-in'), v=inp.value.trim();
+  if(!id){ alert('物件を選択してください'); return; }
+  if(!v) return;
+  todos[id]=todos[id]||[]; todos[id].push({t:v,done:false,pri});
+  persistTodos(); inp.value=''; renderTodos(); inp.focus();
 }
-function toggleTodo(pi,j){
-  const id=pid(props[pi]); todos[id][j].done=!todos[id][j].done;
-  persistTodos(); renderTodos();
+function toggleTodo(id,j){
+  if(!todos[id]||!todos[id][j]) return;
+  todos[id][j].done=!todos[id][j].done; persistTodos(); renderTodos();
 }
-function delTodo(pi,j){
-  const id=pid(props[pi]); todos[id].splice(j,1);
+function delTodo(id,j){
+  if(!todos[id]) return;
+  todos[id].splice(j,1);
   if(!todos[id].length) delete todos[id];
   persistTodos(); renderTodos();
-}
-function moveTodo(pi,j,dir){
-  const id=pid(props[pi]), arr=todos[id], k=j+dir;
-  if(k<0||k>=arr.length) return;
-  [arr[j],arr[k]]=[arr[k],arr[j]]; persistTodos(); renderTodos();
 }
 
 /* ===== 編集（並び替え）モード & ダークモード ===== */
@@ -506,36 +571,10 @@ function show(p){
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
-/* ===== バックアップ書出/読込 ===== */
-function exportData(){
-  const data={props,checks,todos,exportedAt:new Date().toISOString()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='案件管理バックアップ_'+new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')+'.json';
-  a.click(); URL.revokeObjectURL(a.href);
-}
-function importData(ev){
-  const file=ev.target.files[0]; if(!file) return;
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      const d=JSON.parse(r.result);
-      if(!Array.isArray(d.props)) throw 0;
-      if(!confirm('現在のデータを読込内容で置き換えます。よろしいですか？')){ ev.target.value=''; return; }
-      props=d.props; checks=d.checks||{}; todos=d.todos||{};
-      persist(); persistChecks(); persistTodos();
-      renderList(); renderSched(); renderTodos();
-      alert('読み込みました（'+props.length+'件）');
-    }catch(e){ alert('ファイルを読み込めませんでした'); }
-    ev.target.value='';
-  };
-  r.readAsText(file);
-}
-
 /* ===== 起動 ===== */
 (function init(){
   document.getElementById('today').textContent='本日：'+new Date().toLocaleDateString('ja-JP');
+  document.getElementById('year-label').textContent=curYear+'年';
   if(localStorage.getItem(DARK)==='1'){ document.body.classList.add('dark');
     ['btn-dark','btn-dark2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀ ライト';}); }
   fillMonthSelects(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos();
