@@ -2,624 +2,1113 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="案件管理">
-<meta name="theme-color" content="#1e293b">
-<title>案件管理 - タスク管理表</title>
+<meta name="apple-mobile-web-app-title" content="管理士試験">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>マンション管理士 一問一答</title>
 <style>
-  :root{
-    --bg:#f4f6f9; --panel:#fff; --line:#d8dee6; --ink:#1f2933;
-    --sub:#5b6b7b; --accent:#2563eb; --accent-d:#1d4ed8; --soft:#eef3fb;
-    --warn:#dc2626; --ok:#059669; --pcolbg:#f8fafc; --thbg:#f1f5f9;
-  }
-  body.dark{
-    --bg:#0f172a; --panel:#1e293b; --line:#334155; --ink:#e2e8f0;
-    --sub:#94a3b8; --soft:#1e3a5f; --pcolbg:#243349; --thbg:#243349;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Meiryo",system-ui,sans-serif;
-    background:var(--bg);color:var(--ink);font-size:14px;transition:background .2s,color .2s;}
-  header{background:#1e293b;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:18px;}
-  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.5px;}
-  header .date{margin-left:auto;font-size:13px;color:#cbd5e1;}
-  nav{display:flex;gap:6px;background:var(--panel);padding:8px 22px;border-bottom:1px solid var(--line);}
-  nav button{border:none;background:transparent;padding:9px 18px;border-radius:8px;
-    cursor:pointer;font-size:14px;font-weight:600;color:var(--sub);}
-  nav button.active{background:var(--accent);color:#fff;}
-  .wrap{padding:22px;max-width:1700px;margin:0 auto;}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;
-    box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;}
-  .panel h2{margin:0 0 14px;font-size:16px;}
-  /* form */
-  .form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-  .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:600;}
-  .field input,.field select{width:100%;padding:9px 11px;border:1px solid var(--line);
-    border-radius:8px;font-size:14px;background:var(--panel);color:var(--ink);}
-  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(37,99,235,.12);}
-  .actions{margin-top:16px;display:flex;gap:10px;}
-  .btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;}
-  .btn-primary{background:var(--accent);color:#fff;}
-  .btn-primary:hover{background:var(--accent-d);}
-  .btn-ghost{background:var(--soft);color:var(--sub);}
-  .btn-ghost.active{background:var(--accent);color:#fff;}
-  .btn-sm{padding:5px 12px;font-size:12px;border-radius:6px;}
-  .btn-del{background:#fee2e2;color:var(--warn);}
-  body.dark .btn-del{background:#4c1d1d;color:#fca5a5;}
-  .btn-edit{background:var(--soft);color:var(--accent);}
-  /* list table */
-  table{border-collapse:collapse;width:100%;}
-  .list-tbl th,.list-tbl td{border:1px solid var(--line);padding:8px 10px;text-align:center;font-size:13px;}
-  .list-tbl th{background:var(--thbg);color:var(--sub);font-weight:700;}
-  .list-tbl tr:nth-child(even){background:rgba(127,127,127,.05);}
-  .muted{color:#94a3b8;}
-  /* ===== タスク管理表 ===== */
-  .sched-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;
-    -webkit-overflow-scrolling:touch;max-height:calc(100vh - 230px);}
-  .sched{border-collapse:collapse;}
-  .sched th,.sched td{border:1px solid var(--line);padding:0;vertical-align:top;}
-  .sched thead th{background:#1e293b;color:#fff;position:sticky;top:0;z-index:2;
-    text-align:center;font-weight:700;padding:8px 4px;font-size:12px;}
-  .sched th.mhead{width:56px;min-width:56px;}
-  .sched .nocol{position:sticky;left:0;background:var(--pcolbg);z-index:1;text-align:center;
-    width:32px;min-width:32px;max-width:32px;font-weight:700;font-size:12px;padding:6px 2px;color:var(--sub);}
-  .sched thead .nocol{background:#0f172a;z-index:3;color:#fff;}
-  .sched .pcol{position:sticky;left:32px;background:var(--pcolbg);z-index:1;text-align:left;
-    min-width:112px;max-width:132px;font-weight:600;padding:6px 8px;}
-  .sched thead .pcol{background:#0f172a;z-index:3;}
-  .sched td.mcell{padding:2px;height:1px;}
-  /* チェックする小さいマス（段階式） */
-  .chk{display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;border-radius:5px;padding:3px 2px;margin:2px 0;font-size:10px;
-    font-weight:700;line-height:1.15;cursor:pointer;user-select:none;
-    min-height:30px;transition:all .12s;}
-  .chk .nm{display:block;}
-  .chk .mk{display:block;font-size:10px;margin-top:1px;opacity:.5;}
-  .chk.prog .mk{opacity:1;}
-  .chk.done{color:#fff !important;}
-  .chk.done .nm{text-decoration:line-through;opacity:.95;}
-  .chk.done .mk{opacity:1;}
-  .chk.nocheck{cursor:default;}
-  .reorder{display:flex;gap:3px;margin-top:4px;}
-  .mini{border:1px solid var(--line);background:var(--panel);color:var(--sub);
-    border-radius:5px;font-size:11px;line-height:1;padding:2px 5px;cursor:pointer;font-weight:700;}
-  .mini.del{color:var(--warn);}
-  .pname{font-weight:700;font-size:13px;}
-  .pmeta{font-size:10px;color:var(--sub);font-weight:400;margin-top:2px;line-height:1.4;}
-  .empty{padding:40px;text-align:center;color:#94a3b8;}
-  .legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:14px;}
-  .legend span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);}
-  .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
-  .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
-  .sched-bar .spacer{flex:1;}
-  .year-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
-  .totals{margin-left:auto;font-size:13px;font-weight:600;color:var(--sub);}
-  .totals b{color:var(--ink);font-size:15px;}
-  .year-label{font-size:18px;font-weight:700;min-width:72px;text-align:center;color:var(--accent);}
-  /* やることリスト（カード・グリッド） */
-  /* やること追加バー */
-  .todo-addbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;
-    padding:12px;background:var(--thbg);border:1px solid var(--line);border-radius:10px;}
-  .todo-addbar select,.todo-addbar input{padding:8px 10px;border:1px solid var(--line);
-    border-radius:7px;font-size:13px;background:var(--panel);color:var(--ink);}
-  .todo-addbar .ti{flex:1;min-width:160px;}
-  /* 優先度グループ */
-  .pri-group{margin-bottom:18px;}
-  .pri-head{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;
-    margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid var(--line);}
-  .pri-badge{display:inline-block;font-size:11px;font-weight:700;color:#fff;
-    border-radius:5px;padding:2px 9px;}
-  .pri-high .pri-badge,.pb-high{background:#dc2626;}
-  .pri-mid  .pri-badge,.pb-mid {background:#d97706;}
-  .pri-low  .pri-badge,.pb-low {background:#0891b2;}
-  .todo-list{list-style:none;margin:0;padding:0;}
-  .todo-item{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13px;
-    border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel);}
-  .todo-item.done{opacity:.6;}
-  .todo-item.done .todo-txt{text-decoration:line-through;color:#94a3b8;}
-  .todo-chk{cursor:pointer;font-weight:700;color:var(--accent);width:18px;text-align:center;font-size:15px;}
-  .todo-prop{font-size:11px;color:var(--sub);background:var(--soft);border-radius:5px;
-    padding:2px 7px;white-space:nowrap;}
-  .todo-txt{flex:1;cursor:pointer;word-break:break-word;}
-  .pb{display:inline-block;font-size:10px;font-weight:700;color:#fff;border-radius:4px;padding:1px 6px;}
-  .todo-empty{color:#94a3b8;font-size:13px;padding:8px 2px;}
-  .rule-tbl td,.rule-tbl th{border:1px solid var(--line);padding:6px 10px;font-size:12px;}
-  .rule-tbl th{background:var(--thbg);}
-  .hint{font-size:12px;color:var(--sub);margin:-6px 0 14px;}
-  /* ===== レスポンシブ（スマホ） ===== */
-  @media (max-width:640px){
-    header{padding:11px 14px;gap:10px;}
-    header h1{font-size:15px;}
-    header .date{font-size:11px;}
-    nav{padding:6px 10px;gap:4px;overflow-x:auto;}
-    nav button{padding:8px 12px;font-size:13px;white-space:nowrap;}
-    .wrap{padding:12px;}
-    .panel{padding:14px;border-radius:10px;margin-bottom:14px;}
-    .form-grid{grid-template-columns:1fr;gap:11px;}
-    .field input,.field select{font-size:16px;padding:11px;} /* iOSズーム防止 */
-    .btn{padding:11px 18px;}
-    .list-tbl th,.list-tbl td{padding:6px 4px;font-size:12px;}
-    .sched th.mhead{width:48px;min-width:48px;}
-    .sched .pcol{min-width:90px;max-width:100px;padding:5px 6px;}
-    .pname{font-size:12px;}
-    .chk{min-height:34px;font-size:9px;} /* タップしやすく */
-    .todo-addbar select,.todo-addbar input{font-size:16px;}
-    .todo-addbar .ti{min-width:0;flex-basis:100%;}
-  }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --primary:#1a237e;--accent:#ff6f00;--green:#2e7d32;--red:#c62828;--orange:#e65100;
+  --card:#fff;--bg:#f0f2f5;--text:#1a1a2e;--sub:#666;
+  --safe-top:env(safe-area-inset-top);--safe-bottom:env(safe-area-inset-bottom);
+}
+body.dark-mode{--card:#1e1e1e;--bg:#121212;--text:#e0e0e0;--sub:#aaa;}
+body.dark-mode .genre-card{background:#1e1e1e;border-color:#333;}
+body.dark-mode .genre-name{color:#e0e0e0;}
+body.dark-mode .genre-meta{color:#aaa;}
+body.dark-mode .pass-stats{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);}
+body.dark-mode .search-result-item{background:#1e1e1e;border-color:#333;}
+body.dark-mode .search-result-q{color:#e0e0e0;}
+body.dark-mode .list-item{background:#1e1e1e;border-color:#333;color:#e0e0e0;}
+body.dark-mode .wrong-item{background:#1e1e1e;border-color:#333;color:#e0e0e0;}
+body.dark-mode .question-card{background:#1e1e1e;}
+body.dark-mode .question-text{color:#e0e0e0;}
+body.dark-mode .choice-btn{background:#2a2a2a;border-color:#444;color:#e0e0e0;}
+body.dark-mode .review-check-btn{background:#2a2a2a;border-color:#444;color:#ccc;}
+.dark-toggle-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ===== HOME ===== */
+#homeScreen{background:linear-gradient(160deg,#1a237e 0%,#283593 60%,#1565c0 100%);}
+.home-header{padding:calc(var(--safe-top) + 14px) 20px 14px;text-align:center;color:#fff;position:relative;}
+.home-header h1{font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:2px;}
+.home-header p{font-size:12px;opacity:.75;}
+.total-badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;margin-top:6px;}
+.exam-countdown{margin-top:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:7px 14px;font-size:12px;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+.exam-countdown .exam-date{opacity:.85;}
+.exam-countdown .days-wrap{display:flex;align-items:baseline;gap:3px;}
+.exam-countdown .days{font-size:26px;font-weight:bold;color:#FFD54F;line-height:1;}
+.exam-countdown .days-unit{font-size:12px;color:#FFD54F;}
+.edit-btn{position:absolute;top:calc(var(--safe-top) + 16px);right:16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+.edit-done-btn{display:none;position:absolute;top:calc(var(--safe-top) + 16px);right:16px;background:#ffd54f;border:none;color:#1a237e;border-radius:10px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+.genre-grid{padding:12px 16px 12px;display:flex;flex-direction:column;gap:12px;}
+.pass-stats{margin:0 16px;padding:14px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:14px;color:#fff;margin-bottom:calc(var(--safe-bottom)+90px);}
+.pass-stats-title{font-size:11px;opacity:.7;margin-bottom:8px;text-align:center;}
+.pass-stats-table{width:100%;border-collapse:collapse;font-size:12px;}
+.pass-stats-table th{opacity:.6;font-weight:400;padding:3px 6px;text-align:center;}
+.pass-stats-table td{padding:4px 6px;text-align:center;border-top:1px solid rgba(255,255,255,.1);}
+.pass-stats-table .pct{font-weight:700;color:#FFD54F;}
+.home-footer-space{height:1cm;}
+.genre-card{background:#fff;border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.12);cursor:pointer;transition:transform .1s,opacity .2s;}
+.genre-card:active{transform:scale(.97);}
+.genre-card.dragging{opacity:.4;transform:scale(.97);}
+.genre-card.drag-over{border:2px dashed #1a237e;}
+.drag-handle{display:none;color:#bbb;font-size:22px;cursor:grab;padding:0 4px;flex-shrink:0;touch-action:none;}
+.edit-mode .drag-handle{display:flex;align-items:center;}
+.edit-mode .genre-card{cursor:default;}
+.edit-mode .genre-card:active{transform:none;}
+.genre-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.genre-info{flex:1;min-width:0;}
+.genre-name{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:3px;}
+.genre-meta{font-size:12px;color:#888;}
+.genre-progress{width:100%;height:4px;background:#e8eaf6;border-radius:2px;margin-top:8px;overflow:hidden;}
+.genre-progress-bar{height:100%;border-radius:2px;transition:width .4s;}
+.genre-score{font-size:12px;font-weight:700;text-align:center;}
+.lap-reset-btn{background:none;border:1px solid #ddd;border-radius:8px;padding:2px 7px;font-size:10px;color:#999;cursor:pointer;white-space:nowrap;}
+.genre-score-label{font-size:9px;font-weight:400;color:#999;display:block;margin-bottom:1px;}
+
+/* ===== QUIZ ===== */
+#quizScreen{background:var(--bg);}
+.quiz-header{background:var(--primary);color:#fff;padding:calc(var(--safe-top)+12px) 16px 12px;display:flex;align-items:center;gap:10px;}
+.back-btn{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer;}
+.quiz-title{font-size:15px;font-weight:700;flex:1;text-align:center;}
+.quiz-counter{font-size:13px;opacity:.8;}
+.progress-bar-wrap{background:#3949ab;height:4px;}
+.progress-bar-inner{height:100%;background:#ffd54f;transition:width .3s;}
+.quiz-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 16px calc(var(--safe-bottom)+20px);gap:16px;}
+.question-num{font-size:12px;color:var(--sub);font-weight:600;}
+.lap-badge{font-size:10px;font-weight:700;border-radius:5px;padding:1px 5px;white-space:nowrap;}
+.lap-badge.ok{background:#e8f5e9;color:#2e7d32;}
+.lap-badge.ng{background:#fce4ec;color:#c62828;}
+.question-card{background:#fff;border-radius:20px;padding:28px 22px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%;max-width:500px;}
+.question-text{font-size:17px;line-height:1.7;font-weight:500;color:var(--text);}
+.answer-btns{display:flex;gap:14px;width:100%;max-width:500px;}
+.ans-btn{flex:1;padding:18px;border:none;border-radius:16px;font-size:26px;font-weight:700;cursor:pointer;transition:transform .1s,opacity .2s;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+.ans-btn:active{transform:scale(.95);}
+.ans-btn.maru{background:var(--green);color:#fff;}
+.ans-btn.batsu{background:var(--red);color:#fff;}
+
+/* 結果オーバーレイ */
+.result-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center;padding:0 0 calc(var(--safe-bottom)+20px);overflow-y:auto;}
+.result-overlay.show{display:flex;}
+.result-card{background:#fff;border-radius:28px 28px 24px 24px;padding:24px 20px 20px;width:100%;max-width:500px;box-shadow:0 -8px 40px rgba(0,0,0,.2);}
+.result-header{text-align:center;margin-bottom:12px;}
+.result-badge{display:inline-block;border-radius:12px;padding:8px 24px;font-size:20px;font-weight:700;margin-bottom:8px;}
+.result-badge.correct{background:#e8f5e9;color:var(--green);}
+.result-badge.wrong{background:#ffebee;color:var(--red);}
+.result-explanation{font-size:14px;line-height:1.7;color:#333;background:#f5f5f5;border-radius:12px;padding:14px;margin-bottom:12px;}
+.result-answer-text{font-size:13px;color:var(--sub);text-align:center;margin-bottom:10px;}
+
+/* 復習チェックボタン */
+.review-check-btn{width:100%;padding:13px;border:2px solid #e0e0e0;border-radius:12px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;transition:all .15s;color:#555;}
+.review-check-btn.checked{background:#fff3e0;border-color:var(--orange);color:var(--orange);}
+
+.next-btn{width:100%;padding:16px;background:var(--primary);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;}
+
+/* ===== RESULT SCREEN ===== */
+#resultScreen{background:linear-gradient(160deg,#1a237e,#283593);}
+.result-screen-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(var(--safe-top)+20px) 20px calc(var(--safe-bottom)+20px);gap:20px;}
+.result-circle{width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.1);border:4px solid #ffd54f;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
+.result-pct{font-size:48px;font-weight:700;}
+.result-label{font-size:14px;opacity:.8;}
+.result-genre-name{font-size:18px;font-weight:700;color:#fff;text-align:center;}
+.result-stats{display:flex;gap:16px;}
+.stat-box{background:rgba(255,255,255,.12);border-radius:16px;padding:16px 24px;text-align:center;color:#fff;}
+.stat-num{font-size:28px;font-weight:700;}
+.stat-lbl{font-size:12px;opacity:.7;}
+.result-btns{display:flex;flex-direction:column;gap:10px;width:100%;}
+.result-btns button{padding:16px;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;}
+.btn-retry{background:#ffd54f;color:#1a237e;}
+.btn-home{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)!important;}
+
+.result-circle{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.2);}
+.result-circle:active{opacity:.8;}
+
+/* 正解率アイコン（クイズヘッダー） */
+.rate-icon{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.55);color:#fff;border-radius:999px;padding:5px 11px 5px 9px;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;line-height:1;}
+.rate-icon:active{opacity:.65;}
+.rate-icon svg{width:14px;height:14px;flex-shrink:0;}
+
+/* ===== SESSION LOG OVERLAY (bottom sheet) ===== */
+.session-log-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;align-items:flex-end;justify-content:center;}
+.session-log-overlay.show{display:flex;}
+.session-log-card{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:500px;max-height:82vh;display:flex;flex-direction:column;}
+.session-log-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px;border-bottom:1px solid #eee;}
+.session-log-head h3{margin:0;font-size:16px;font-weight:700;color:#222;}
+.session-log-x{background:none;border:none;font-size:20px;color:#999;cursor:pointer;padding:4px 10px;line-height:1;}
+.session-log-summary{padding:10px 20px;font-size:13px;color:#666;border-bottom:1px solid #f2f2f2;display:flex;gap:14px;}
+.session-log-summary b{color:#222;}
+.session-log-body{overflow-y:auto;padding:4px 16px calc(var(--safe-bottom)+16px);}
+.session-log-empty{text-align:center;color:#999;padding:24px;font-size:14px;}
+.session-log-item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid #f2f2f2;}
+.session-log-item:last-child{border-bottom:none;}
+.session-log-badge{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.session-log-badge.ok{background:#e8f5e9;color:#2e7d32;}
+.session-log-badge.ng{background:#ffebee;color:#c62828;}
+.session-log-num{font-size:12px;color:#888;flex-shrink:0;min-width:44px;}
+.session-log-text{font-size:13px;color:#333;line-height:1.4;}
+
+/* ===== WRONG / REVIEW LIST ===== */
+#wrongScreen,#reviewScreen{background:var(--bg);}
+.list-header{background:var(--primary);color:#fff;padding:calc(var(--safe-top)+12px) 16px 12px;display:flex;align-items:center;gap:10px;}
+.item-list{padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-bottom:calc(var(--safe-bottom)+20px);}
+.list-item{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.list-item-q{font-size:14px;line-height:1.6;margin-bottom:8px;}
+.list-item-a{font-size:13px;color:var(--primary);font-weight:600;}
+.list-item-e{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.5;}
+.review-del-btn{float:right;background:none;border:1px solid #ccc;border-radius:8px;padding:4px 10px;font-size:12px;color:#888;cursor:pointer;margin-left:8px;}
+
+/* 復習画面のスタート */
+.review-start-bar{padding:12px 16px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;}
+.review-count{font-size:13px;color:var(--sub);}
+.review-start-btn{background:var(--orange);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* ===== 4択ボタン ===== */
+.choice-btn{width:100%;padding:14px 16px;border:2px solid #e0e0e0;border-radius:14px;background:#fff;font-size:14px;line-height:1.5;text-align:left;cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.06);}
+.choice-btn:active{transform:scale(.98);}
+.choice-btn.correct{background:#e8f5e9;border-color:var(--green);color:var(--green);}
+.choice-btn.wrong{background:#ffebee;border-color:var(--red);color:var(--red);}
+.choice-btn:disabled{cursor:default;}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;display:flex;padding-bottom:var(--safe-bottom);z-index:50;box-shadow:0 -2px 10px rgba(0,0,0,.08);}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 6px;cursor:pointer;border:none;background:none;color:#9e9e9e;font-size:9px;gap:3px;transition:color .15s;position:relative;}
+.nav-btn.active{color:var(--primary);}
+.nav-btn svg{width:22px;height:22px;}
+.nav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:var(--orange);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;}
+
+/* ===== SEARCH ===== */
+.search-bar{padding:10px 16px 4px;position:relative;}
+.search-input{width:100%;padding:10px 40px 10px 14px;border-radius:12px;border:none;font-size:14px;background:rgba(255,255,255,.18);color:#fff;outline:none;}
+.search-input::placeholder{color:rgba(255,255,255,.5);}
+.search-clear{position:absolute;right:24px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;display:none;}
+#searchScreen{background:var(--bg);}
+.search-result-header{background:var(--primary);color:#fff;padding:calc(var(--safe-top)+12px) 16px 12px;display:flex;align-items:center;gap:10px;}
+.search-result-list{padding:12px 16px calc(var(--safe-bottom)+20px);display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
+.search-result-item{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer;}
+.search-result-item:active{opacity:.7;}
+.search-genre-tag{font-size:10px;font-weight:700;color:#fff;border-radius:6px;padding:2px 8px;display:inline-block;margin-bottom:6px;}
+.search-result-q{font-size:13px;line-height:1.6;color:#1a1a2e;}
+.search-highlight{background:#FFF59D;border-radius:2px;}
+.search-empty{text-align:center;padding:60px 20px;color:#999;font-size:15px;}
 </style>
 </head>
 <body>
-<header>
-  <h1>案件管理 — タスク管理表</h1>
-  <span class="date" id="today"></span>
-</header>
-<nav>
-  <button id="tab-input" class="active" onclick="show('input')">入力情報</button>
-  <button id="tab-sched" onclick="show('sched')">タスク管理表</button>
-  <button id="tab-todo" onclick="show('todo')">やることリスト</button>
-  <button id="tab-rule" onclick="show('rule')">タスク基準</button>
-</nav>
 
-<div class="wrap">
-  <!-- ============ 入力ページ ============ -->
-  <section id="page-input">
-    <div class="panel">
-      <h2 id="form-title">マンション情報を登録</h2>
-      <p class="hint">※タスクは各月（1〜12月）に自動で割り当てられます。年をまたぐ計算にも対応しています。</p>
-      <div class="form-grid">
-        <div class="field">
-          <label>① マンションコード <span class="muted">(入力で②〜⑥を自動表示)</span></label>
-          <input id="f-code" type="text" placeholder="例：2321" list="code-list" oninput="autofillByCode()">
-          <datalist id="code-list"></datalist>
-        </div>
-        <div class="field">
-          <label>② マンション名</label>
-          <input id="f-name" type="text" placeholder="例：天王寺">
-        </div>
-        <div class="field">
-          <label>③ 戸数</label>
-          <input id="f-units" type="number" min="0" placeholder="例：427">
-        </div>
-        <div class="field">
-          <label>④ 決算月</label>
-          <select id="f-settle"></select>
-        </div>
-        <div class="field">
-          <label>⑤ 総会開催月</label>
-          <select id="f-meeting"></select>
-        </div>
-        <div class="field">
-          <label>⑥ 契約満了月</label>
-          <select id="f-expire"></select>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="saveProp()">登録する</button>
-        <button class="btn btn-ghost" onclick="resetForm()">クリア</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>登録済みマンション一覧</h2>
-      <table class="list-tbl">
-        <thead>
-          <tr><th>No</th><th>コード</th><th>マンション名</th><th>戸数</th>
-          <th>決算月</th><th>総会月</th><th>契約満了月</th><th>操作</th></tr>
-        </thead>
-        <tbody id="list-body"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ============ スケジュールページ ============ -->
-  <section id="page-sched" style="display:none">
-    <div class="panel">
-      <h2>タスク管理表（12ヶ月）</h2>
-      <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：総会→総会報告→総会完了→未着手に戻る）。進捗は西暦年ごとに記録されます。</p>
-      <div class="sched-bar">
-        <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
-        <button class="btn btn-sm btn-ghost" id="btn-dark" onclick="toggleDark()">🌙 ダーク</button>
-        <span class="spacer"></span>
-        <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
-      </div>
-      <div class="legend" id="legend"></div>
-      <div class="year-nav">
-        <button class="btn btn-sm btn-ghost" onclick="changeYear(-1)">◀ 前年</button>
-        <span id="year-label" class="year-label"></span>
-        <button class="btn btn-sm btn-ghost" onclick="changeYear(1)">翌年 ▶</button>
-        <span id="sched-totals" class="totals"></span>
-      </div>
-      <div class="sched-scroll">
-        <table class="sched">
-          <thead><tr id="sched-head"></tr></thead>
-          <tbody id="sched-body"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ やることリストページ ============ -->
-  <section id="page-todo" style="display:none">
-    <div class="panel">
-      <h2>やることリスト（優先度順）</h2>
-      <p class="hint">優先度ごとにまとめて表示されます（高→中→低）。完了したらタップでチェック。</p>
-      <div class="todo-addbar">
-        <select id="todo-prop"></select>
-        <select id="todo-pri">
-          <option value="high">優先度：高</option>
-          <option value="mid" selected>優先度：中</option>
-          <option value="low">優先度：低</option>
-        </select>
-        <input class="ti" id="todo-in" placeholder="やること内容を入力…" onkeydown="if(event.key==='Enter')addTodo()">
-        <button class="btn btn-sm btn-primary" onclick="addTodo()">追加</button>
-        <span class="spacer" style="flex:1"></span>
-        <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
-      </div>
-      <div id="todo-side"></div>
-    </div>
-  </section>
-
-  <!-- ============ 基準ページ ============ -->
-  <section id="page-rule" style="display:none">
-    <div class="panel">
-      <h2>タスク反映基準</h2>
-      <table class="rule-tbl">
-        <thead><tr><th>No</th><th>タスク（進捗段階）</th><th>基準</th></tr></thead>
-        <tbody id="rule-body"></tbody>
-      </table>
-    </div>
-  </section>
+<!-- HOME -->
+<div id="homeScreen" class="screen active">
+  <div class="home-header">
+    <button class="edit-btn" id="editBtn" onclick="toggleEditMode()">編集</button>
+    <button class="edit-done-btn" id="editDoneBtn" onclick="toggleEditMode()">完了</button>
+    <button class="dark-toggle-btn" id="darkToggleBtn" onclick="toggleDarkMode()" style="display:none;position:absolute;top:calc(var(--safe-top) + 50px);right:16px;">🌙 背景を黒に</button>
+    <h1>🏢 マンション管理士</h1>
+    <p>過去問・一問一答 試験対策</p>
+    <div class="total-badge" id="totalBadge"></div>
+    <div class="exam-countdown" id="examCountdown"></div>
+  </div>
+  <div class="search-bar">
+    <input class="search-input" id="searchInput" type="search" placeholder="🔍 キーワード検索..." oninput="onSearchInput()" oncompositionend="onSearchCompositionEnd()" onkeydown="if(event.key==='Enter'&&!_isComposing){const k=this.value.trim();if(k)doSearch(k);}" />
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+  </div>
+  <div class="genre-grid" id="genreGrid"></div>
+  <div class="pass-stats">
+    <div class="pass-stats-title">📊 過去7年間の合格実績</div>
+    <table class="pass-stats-table">
+      <tr><th>年度</th><th>受験者数</th><th>合格者数</th><th>合格率</th></tr>
+      <tr><td>R7</td><td>10,984名</td><td>1,210名</td><td class="pct">11.0%</td></tr>
+      <tr><td>R6</td><td>12,489名</td><td>1,286名</td><td class="pct">10.3%</td></tr>
+      <tr><td>R5</td><td>13,762名</td><td>1,125名</td><td class="pct">8.2%</td></tr>
+      <tr><td>R4</td><td>12,695名</td><td>1,402名</td><td class="pct">11.0%</td></tr>
+      <tr><td>R3</td><td>12,520名</td><td>1,238名</td><td class="pct">10.0%</td></tr>
+      <tr><td>R2</td><td>12,198名</td><td>1,045名</td><td class="pct">8.6%</td></tr>
+      <tr><td>R1</td><td>12,021名</td><td>991名</td><td class="pct">8.2%</td></tr>
+    </table>
+  </div>
+  <div style="height:2.5cm;"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="showHome()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      ホーム
+    </button>
+    <button class="nav-btn" onclick="showReviewScreen()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      復習問題
+      <span class="nav-badge" id="reviewBadge" style="display:none"></span>
+    </button>
+    <button class="nav-btn" onclick="showWrongList()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      間違い一覧
+    </button>
+    <button class="nav-btn" onclick="resetAll()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      リセット
+    </button>
+  </nav>
 </div>
 
+<!-- QUIZ -->
+<div id="quizScreen" class="screen">
+  <div class="quiz-header">
+    <button class="back-btn" onclick="showHome()">＜ 戻る</button>
+    <div class="quiz-title" id="quizTitle"></div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="quiz-counter" id="quizCounter"></div>
+      <div class="rate-icon" id="rateIcon" onclick="showSessionLog()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3v-8zm4-6h2v14H7V7zm4 3h2v11h-2V10zm4-7h2v18h-2V3zm4 10h2v8h-2v-8z"/></svg>
+        <span id="rateIconPct">—</span>
+      </div>
+      <button class="back-btn" onclick="prevQuestion()" style="font-size:11px;padding:5px 9px;opacity:.85;">1問前</button>
+      <button class="back-btn" onclick="restartToFirst()" style="font-size:11px;padding:5px 9px;opacity:.85;">1問目</button>
+    </div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar-inner" id="progressBar"></div></div>
+  <div class="quiz-body">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div class="question-num" id="questionNum"></div>
+      <div id="lapHistory" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+    </div>
+    <div class="question-card"><div class="question-text" id="questionText"></div></div>
+    <div class="answer-btns" id="answerBtns">
+      <button class="ans-btn maru" onclick="answer(true)">○</button>
+      <button class="ans-btn batsu" onclick="answer(false)">×</button>
+    </div>
+    <div class="choice-btns" id="choiceBtns" style="display:none;flex-direction:column;gap:10px;width:100%;max-width:500px;"></div>
+  </div>
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-badge" id="resultBadge"></div>
+        <div class="result-answer-text" id="resultAnswerText"></div>
+      </div>
+      <div class="result-explanation" id="resultExplanation"></div>
+      <button class="review-check-btn" id="reviewCheckBtn" onclick="toggleReview()">☆ 復習リストに追加</button>
+      <button class="next-btn" id="nextBtn" onclick="nextQuestion()">次の問題 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="resultScreen" class="screen">
+  <div class="result-screen-body">
+    <div class="result-genre-name" id="finalGenreName"></div>
+    <div class="result-circle" id="resultCircle">
+      <div class="result-pct" id="finalPct"></div>
+      <div class="result-label">正解率（タップで一覧）</div>
+    </div>
+    <div class="result-stats">
+      <div class="stat-box"><div class="stat-num" id="finalCorrect"></div><div class="stat-lbl">正解</div></div>
+      <div class="stat-box"><div class="stat-num" id="finalWrong"></div><div class="stat-lbl">不正解</div></div>
+      <div class="stat-box"><div class="stat-num" id="finalTotal"></div><div class="stat-lbl">出題数</div></div>
+    </div>
+    <div class="result-btns">
+      <button class="btn-retry" onclick="retryQuiz()">もう一度挑戦</button>
+      <button class="btn-home" onclick="showHome()">ジャンル選択に戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION LOG OVERLAY -->
+<div class="session-log-overlay" id="sessionLogOverlay" onclick="closeSessionLog(event)">
+  <div class="session-log-card">
+    <div class="session-log-head">
+      <h3 id="sessionLogTitle">回答一覧</h3>
+      <button class="session-log-x" onclick="closeSessionLog()">✕</button>
+    </div>
+    <div class="session-log-summary" id="sessionLogSummary"></div>
+    <div class="session-log-body" id="sessionLogList"></div>
+  </div>
+</div>
+
+<!-- SEARCH RESULT -->
+<div id="searchScreen" class="screen">
+  <div class="search-result-header">
+    <button class="back-btn" onclick="showHome()">＜ 戻る</button>
+    <div class="quiz-title" id="searchResultTitle">検索結果</div>
+  </div>
+  <div class="search-result-list" id="searchResultList"></div>
+</div>
+
+<!-- WRONG LIST -->
+<div id="wrongScreen" class="screen">
+  <div class="list-header">
+    <button class="back-btn" onclick="showHome()">＜ 戻る</button>
+    <div class="quiz-title">間違えた問題</div>
+  </div>
+  <div class="item-list" id="wrongList"></div>
+</div>
+
+<!-- REVIEW SCREEN -->
+<div id="reviewScreen" class="screen">
+  <div class="list-header">
+    <button class="back-btn" onclick="showHome()">＜ 戻る</button>
+    <div class="quiz-title">復習問題</div>
+  </div>
+  <div class="review-start-bar">
+    <div class="review-count" id="reviewCount"></div>
+    <button class="review-start-btn" id="reviewStartBtn" onclick="startReviewQuiz()">まとめて解く →</button>
+  </div>
+  <div class="item-list" id="reviewList"></div>
+</div>
+
+<script src="questions.js"></script>
 <script>
-/* ===== タスク定義 =====
-   base: 'settle'=決算月, 'meeting'=総会月, 'expire'=契約満了月
-   off : 月のずらし（+翌月 / -前月）
-   stages: タップで進む進捗段階（最後＝完了）。noCheck=true は表記のみ */
-const TASKS = [
-  {key:'soukai',   base:'meeting', off:0,  rule:'情報入力から反映',  color:'#2563eb',
-    stages:['総会','総会報告中','総会完了']},
-  {key:'rijikai',  base:'meeting', off:-1, rule:'総会の前月',        color:'#7c3aed',
-    stages:['決算理事会','決算理事会完了']},
-  {key:'kessan',   base:'settle',  off:0,  rule:'情報入力から反映',  color:'#0f766e',
-    noCheck:true, label:'決算'},
-  {key:'manryo',   base:'expire',  off:0,  rule:'情報入力から反映',  color:'#b91c1c',
-    stages:['契約満期','契約完了申請中','契約完了']},
-  {key:'jimuhoko', base:'settle',  off:1,  rule:'決算の翌月',        color:'#0891b2',
-    stages:['管理事務報告','管理事務報告書申請中','管理事務報告完了']},
-  {key:'itaku',    base:'meeting', off:-2, rule:'総会の2ヶ月前',     color:'#9333ea',
-    stages:['委託契約書','契約書変更申請中','契約書正式申請中','契約書捺印伺中','委託契約書完了']},
-  {key:'yotei',    base:'settle',  off:-1, rule:'決算の前月',        color:'#0d9488',
-    stages:['年間業務予定表','年間業務予定表申請中','年間業務予定表完了']},
-  {key:'tekisei',  base:'settle',  off:-3, rule:'決算の3ヶ月前',     color:'#ca8a04',
-    stages:['適正化法予定','適正化法予定完了']},
-  {key:'moushide', base:'expire',  off:-3, rule:'契約満了の3ヶ月前', color:'#ea580c',
-    stages:['申出書','申出書申請中','申出書完了']},
-  {key:'parking',  base:'settle',  off:-2, rule:'決算の2ヶ月前',     color:'#65a30d',
-    stages:['駐車場チェック','駐車場チェック完了']},
-  {key:'kaigi',    base:'settle',  off:-3, rule:'決算の3ヶ月前',     color:'#db2777',
-    stages:['マンション会議','マンション会議完了']},
-  {key:'gijiroku', base:'meeting', off:1,  rule:'総会の翌月',        color:'#4f46e5',
-    stages:['総会議事録','総会議事録作成','総会議事録捺印依頼中','総会議事録完了']},
-  {key:'shushi',   base:'settle',  off:1,  rule:'決算の翌月',        color:'#be123c',
-    stages:['収支仮締め','仮締め申請中','収支仮締め完了']},
-];
-function taskName(t){ return t.label || (t.stages ? t.stages[0] : ''); }
+const STORAGE_KEY = 'mgr_stats_v2';
+let state = loadState();
+let currentGenreIdx = 0;
+let currentQuestions = [];
+let currentQIdx = 0;
+let sessionCorrect = 0;
+let sessionWrong = 0;
+let sessionLog = [];
+let isReviewMode = false;
 
-/* ===== マンション マスターデータ（コードから②〜⑥を自動入力） ===== */
-const MASTER = [
-  {code:'53',   name:'泉佐野SH',     units:111, settle:3,  meeting:6,  expire:6},
-  {code:'154',  name:'ES山本',       units:100, settle:3,  meeting:6,  expire:7},
-  {code:'236',  name:'SC泉ケ丘',     units:65,  settle:1,  meeting:4,  expire:5},
-  {code:'670',  name:'北野田大発',   units:103, settle:3,  meeting:6,  expire:6},
-  {code:'2195', name:'APA北畠',      units:81,  settle:12, meeting:3,  expire:3},
-  {code:'2321', name:'朝日P天王寺',  units:427, settle:3,  meeting:6,  expire:6},
-  {code:'2328', name:'RC八尾志紀',   units:59,  settle:3,  meeting:5,  expire:5},
-  {code:'2365', name:'GA阿倍野',     units:27,  settle:8,  meeting:11, expire:11},
-  {code:'2471', name:'VN大和郡山',   units:75,  settle:11, meeting:2,  expire:2},
-  {code:'2564', name:'泉北鴨谷台',   units:165, settle:3,  meeting:5,  expire:6},
-  {code:'2616', name:'AN和泉中央',   units:135, settle:2,  meeting:5,  expire:5},
-  {code:'3844', name:'RHG和泉',      units:260, settle:3,  meeting:5,  expire:6},
-  {code:'5103', name:'奈良CP',       units:98,  settle:2,  meeting:4,  expire:4},
-];
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function genKey(gid, qi) { return `${gid}_${qi}`; }
+function reviewKey(gid, qi) { return `rev_${gid}_${qi}`; }
 
-const STORE='kanken_props_v1', CHECKS='kanken_checks_v1',
-      TODOS='kanken_todos_v1', DARK='kanken_dark_v1';
-const YEARSEL='kanken_year_v1';
-let props  = JSON.parse(localStorage.getItem(STORE)  || '[]');
-let checks = JSON.parse(localStorage.getItem(CHECKS) || '{}'); // { year:{ id:{ key:stageIndex } } }
-let todos  = JSON.parse(localStorage.getItem(TODOS)  || '{}'); // { id:[ {t,done,pri} ] }
-let editIdx=-1, editMode=false;
-let curYear = +localStorage.getItem(YEARSEL) || new Date().getFullYear();
+function getReviewList() {
+  return state._review || {};
+}
 
-/* 旧データ移行 */
-(function migrate(){
-  // (a) boolean → 段階index
-  for(const a in checks) for(const b in checks[a]){
-    const lvl=checks[a][b];
-    if(lvl===true){ const t=TASKS.find(x=>x.key===b);
-      checks[a][b]= t&&t.stages ? t.stages.length-1 : 1; }
+function updateReviewBadge() {
+  const count = Object.keys(getReviewList()).length;
+  const badge = document.getElementById('reviewBadge');
+  if(count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
   }
-  // (b) 年スコープ化：旧フラット形式 { id:{key:idx} } を当年配下へ移動
-  const top=Object.keys(checks);
-  const isFlat=top.some(k=>k.startsWith('c:')||k.startsWith('n:'));
-  if(isFlat){
-    const moved={}; const y=String(new Date().getFullYear());
-    moved[y]=checks; checks=moved;
-  }
-  localStorage.setItem(CHECKS, JSON.stringify(checks));
-  // (c) 優先度未設定のやることは「中」に
-  let tch=false;
-  for(const id in todos) for(const it of todos[id]){ if(!it.pri){ it.pri='mid'; tch=true; } }
-  if(tch) localStorage.setItem(TODOS, JSON.stringify(todos));
-})();
-
-const PRI={high:{label:'高',order:0},mid:{label:'中',order:1},low:{label:'低',order:2}};
-
-/* 選択中の年のチェック集合を取得（無ければ作る） */
-function yearChecks(){
-  const y=String(curYear);
-  checks[y]=checks[y]||{};
-  return checks[y];
 }
 
-/* 物件の識別子（コード優先・無ければ名前） */
-function pid(p){ return (p.code && String(p.code).trim()) ? 'c:'+p.code : 'n:'+p.name; }
-function persist(){ localStorage.setItem(STORE, JSON.stringify(props)); }
-function persistChecks(){ localStorage.setItem(CHECKS, JSON.stringify(checks)); }
-function persistTodos(){ localStorage.setItem(TODOS, JSON.stringify(todos)); }
-
-/* ===== 段階チェック（選択中の年スコープ） ===== */
-function cycleStage(id, key){
-  const t=TASKS.find(x=>x.key===key); if(!t||t.noCheck) return;
-  const yc=yearChecks();
-  let idx=(yc[id]&&yc[id][key])||0;
-  idx=(idx+1)%t.stages.length;
-  yc[id]=yc[id]||{};
-  if(idx===0) delete yc[id][key]; else yc[id][key]=idx;
-  if(!Object.keys(yc[id]).length) delete yc[id];
-  persistChecks(); renderSched();
-}
-function changeYear(delta){
-  curYear+=delta; localStorage.setItem(YEARSEL,curYear);
-  document.getElementById('year-label').textContent=curYear+'年';
-  renderSched();
-}
-function resetChecks(){
-  if(!confirm(curYear+'年の進捗チェックをすべて解除します。よろしいですか？')) return;
-  delete checks[String(curYear)]; persistChecks(); renderSched();
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-/* ===== 月計算 ===== */
-function shift(m,off){ return ((m-1+off)%12+12)%12+1; }
-function baseMonth(p,base){ return base==='settle'?+p.settle:base==='meeting'?+p.meeting:+p.expire; }
+let _isComposing = false;
+document.addEventListener('compositionstart', () => _isComposing = true);
+document.addEventListener('compositionend', () => { _isComposing = false; });
 
-/* ===== 月セレクト ===== */
-function fillMonthSelects(){
-  const opts='<option value="">—</option>'+
-    Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}月</option>`).join('');
-  ['f-settle','f-meeting','f-expire'].forEach(id=>document.getElementById(id).innerHTML=opts);
+function onSearchInput() {
+  const kw = document.getElementById('searchInput').value.trim();
+  document.getElementById('searchClear').style.display = kw ? 'block' : 'none';
 }
 
-/* ===== コード→マスターデータ自動入力 ===== */
-function fillCodeList(){
-  document.getElementById('code-list').innerHTML=
-    MASTER.map(m=>`<option value="${esc(m.code)}">${esc(m.name)}</option>`).join('');
-}
-function autofillByCode(){
-  const code=val('f-code');
-  const m=MASTER.find(x=>x.code===code);
-  if(!m) return; // 該当なし＝手入力のまま
-  setv('f-name',m.name); setv('f-units',m.units);
-  setv('f-settle',m.settle); setv('f-meeting',m.meeting); setv('f-expire',m.expire);
+function onSearchCompositionEnd() {
+  const kw = document.getElementById('searchInput').value.trim();
+  if(kw.length < 1) return;
+  doSearch(kw);
 }
 
-/* ===== 物件 保存/編集/削除 ===== */
-function val(id){ return document.getElementById(id).value.trim(); }
-function setv(id,v){ document.getElementById(id).value=v||''; }
-function saveProp(){
-  const rec={code:val('f-code'),name:val('f-name'),units:val('f-units'),
-    settle:val('f-settle'),meeting:val('f-meeting'),expire:val('f-expire')};
-  if(!rec.name){ alert('マンション名を入力してください'); return; }
-  if(!rec.settle||!rec.meeting){ alert('決算月と総会開催月を選択してください'); return; }
-  if(editIdx>=0){ props[editIdx]=rec; editIdx=-1; } else { props.push(rec); }
-  persist(); resetForm(); renderList(); renderSched(); renderTodos();
-}
-function resetForm(){
-  ['f-code','f-name','f-units','f-settle','f-meeting','f-expire'].forEach(id=>setv(id,''));
-  editIdx=-1; document.getElementById('form-title').textContent='マンション情報を登録';
-}
-function editProp(i){
-  const p=props[i];
-  setv('f-code',p.code); setv('f-name',p.name); setv('f-units',p.units);
-  setv('f-settle',p.settle); setv('f-meeting',p.meeting); setv('f-expire',p.expire);
-  editIdx=i; document.getElementById('form-title').textContent='マンション情報を編集';
-  show('input'); window.scrollTo({top:0,behavior:'smooth'});
-}
-function delProp(i){
-  if(!confirm(`「${props[i].name}」を削除しますか？`)) return;
-  props.splice(i,1); persist(); renderList(); renderSched(); renderTodos();
-}
-function moveProp(i,dir){
-  const j=i+dir; if(j<0||j>=props.length) return;
-  [props[i],props[j]]=[props[j],props[i]];
-  persist(); renderSched(); renderList();
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').style.display = 'none';
 }
 
-/* ===== 一覧描画 ===== */
-function renderList(){
-  const b=document.getElementById('list-body');
-  if(!props.length){ b.innerHTML='<tr><td colspan="8" class="muted" style="padding:24px">未登録です</td></tr>'; return; }
-  b.innerHTML=props.map((p,i)=>`
-    <tr>
-      <td>${i+1}</td><td>${esc(p.code)}</td><td style="text-align:left">${esc(p.name)}</td>
-      <td>${esc(p.units)}</td><td>${p.settle?p.settle+'月':'—'}</td>
-      <td>${p.meeting?p.meeting+'月':'—'}</td><td>${p.expire?p.expire+'月':'—'}</td>
-      <td>
-        <button class="btn btn-sm btn-edit" onclick="editProp(${i})">編集</button>
-        <button class="btn btn-sm btn-del" onclick="delProp(${i})">削除</button>
-      </td>
-    </tr>`).join('');
-}
-
-/* ===== スケジュール描画 ===== */
-function renderSched(){
-  const head=document.getElementById('sched-head');
-  head.innerHTML='<th class="nocol">No</th><th class="pcol">マンション</th>'+
-    Array.from({length:12},(_,i)=>`<th class="mhead">${i+1}月</th>`).join('');
-  const tot=document.getElementById('sched-totals');
-  if(tot){
-    const units=props.reduce((s,p)=>s+(+p.units||0),0);
-    tot.innerHTML=`総棟数 <b>${props.length}</b> 棟 ／ 総戸数 <b>${units}</b> 戸`;
-  }
-  const body=document.getElementById('sched-body');
-  if(!props.length){ body.innerHTML='<tr><td colspan="14" class="empty">マンションを登録するとここに表示されます</td></tr>'; return; }
-
-  const yc=yearChecks();
-  body.innerHTML=props.map((p,pi)=>{
-    const id=pid(p), cdone=yc[id]||{};
-    const cells=Array.from({length:12},()=>[]);
-    TASKS.forEach(t=>{
-      const bm=baseMonth(p,t.base); if(!bm) return;
-      cells[shift(bm,t.off)-1].push(t);
-    });
-    const tds=cells.map(list=>`<td class="mcell">${list.map(t=>{
-      if(t.noCheck){
-        return `<div class="chk nocheck" style="background:${t.color};color:#fff;border:1px solid ${t.color}"><span class="nm">${t.label}</span></div>`;
+function doSearch(kw) {
+  const lower = kw.toLowerCase();
+  const results = [];
+  GENRES.forEach((g, gi) => {
+    g.questions.forEach((q, qi) => {
+      const haystack = (q.q + ' ' + (q.e||'') + ' ' + (q.explanation||'') + ' ' +
+        Object.values(q.choices||{}).join(' ')).toLowerCase();
+      if(haystack.includes(lower)) {
+        results.push({g, gi, q, qi});
       }
-      const idx=cdone[t.key]||0, last=t.stages.length-1, label=t.stages[Math.min(idx,last)];
-      let cls,style,mark;
-      if(idx===0){ cls=''; style=`background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`; mark='□'; }
-      else if(idx>=last){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; mark='✓'; }
-      else { cls='prog'; style=`background:${hex2mid(t.color)};color:${t.color};border:1px solid ${t.color}`; mark='●'+idx; }
-      return `<div class="chk ${cls}" style="${style}" onclick="cycleStage('${jsq(id)}','${t.key}')">`+
-        `<span class="nm">${label}</span><span class="mk">${mark}</span></div>`;
-    }).join('')}</td>`).join('');
-    const meta=[p.code?'#'+p.code:'',p.units?p.units+'戸':'',
-      '決算'+p.settle+'月','総会'+p.meeting+'月',p.expire?'満了'+p.expire+'月':'']
-      .filter(Boolean).join(' / ');
-    const reorder=editMode?`<div class="reorder">
-      <button class="mini" onclick="moveProp(${pi},-1)">▲</button>
-      <button class="mini" onclick="moveProp(${pi},1)">▼</button></div>`:'';
-    return `<tr><td class="nocol">${pi+1}</td><td class="pcol"><div class="pname">${esc(p.name)}</div>
-      <div class="pmeta">${meta}</div>${reorder}</td>${tds}</tr>`;
-  }).join('');
-}
-function hex2bg(h){ return h+'18'; }
-function hex2mid(h){ return h+'33'; }
-function hex2bd(h){ return h+'55'; }
-
-/* ===== やることリスト（優先度順・全物件統合） ===== */
-function propName(id){ const p=props.find(x=>pid(x)===id); return p?p.name:'(削除済)'; }
-function fillTodoProps(){
-  const sel=document.getElementById('todo-prop');
-  if(!sel) return;
-  const cur=sel.value;
-  sel.innerHTML=props.length
-    ? props.map(p=>`<option value="${esc(pid(p))}">${esc(p.name)}</option>`).join('')
-    : '<option value="">物件を登録してください</option>';
-  if(cur) sel.value=cur;
-}
-function renderTodos(){
-  fillTodoProps();
-  const el=document.getElementById('todo-side');
-  if(!props.length){ el.innerHTML='<div class="empty">マンションを登録するとここに表示されます</div>'; return; }
-  // 全物件のやることを1配列に集約（優先度→未完了優先で並べる）
-  const all=[];
-  for(const id in todos){ (todos[id]||[]).forEach((it,j)=>all.push({id,j,it})); }
-  let html='';
-  ['high','mid','low'].forEach(pk=>{
-    const group=all.filter(x=>x.it.pri===pk)
-      .sort((a,b)=> (a.it.done-b.it.done)); // 未完了を上に
-    const rows=group.length ? group.map(({id,j,it})=>`
-      <li class="todo-item ${it.done?'done':''}">
-        <span class="todo-chk" onclick="toggleTodo('${jsq(id)}',${j})">${it.done?'✓':'○'}</span>
-        <span class="todo-prop">${esc(propName(id))}</span>
-        <span class="todo-txt" onclick="toggleTodo('${jsq(id)}',${j})">${esc(it.t)}</span>
-        <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
-      </li>`).join('') : `<li class="todo-empty">なし</li>`;
-    html+=`<div class="pri-group pri-${pk}">
-      <h3 class="pri-head"><span class="pri-badge">優先度 ${PRI[pk].label}</span></h3>
-      <ul class="todo-list">${rows}</ul></div>`;
+    });
   });
-  el.innerHTML=html;
-}
-function addTodo(){
-  const id=document.getElementById('todo-prop').value;
-  const pri=document.getElementById('todo-pri').value;
-  const inp=document.getElementById('todo-in'), v=inp.value.trim();
-  if(!id){ alert('物件を選択してください'); return; }
-  if(!v) return;
-  todos[id]=todos[id]||[]; todos[id].push({t:v,done:false,pri});
-  persistTodos(); inp.value=''; renderTodos(); inp.focus();
-}
-function toggleTodo(id,j){
-  if(!todos[id]||!todos[id][j]) return;
-  todos[id][j].done=!todos[id][j].done; persistTodos(); renderTodos();
-}
-function delTodo(id,j){
-  if(!todos[id]) return;
-  todos[id].splice(j,1);
-  if(!todos[id].length) delete todos[id];
-  persistTodos(); renderTodos();
+
+  document.getElementById('searchResultTitle').textContent = `"${kw}" — ${results.length}件`;
+  const list = document.getElementById('searchResultList');
+  list.innerHTML = '';
+
+  if(results.length === 0) {
+    list.innerHTML = '<div class="search-empty">該当する問題が見つかりませんでした</div>';
+  } else {
+    results.forEach(({g, gi, q, qi}) => {
+      const item = document.createElement('div');
+      item.className = 'search-result-item';
+      const preview = q.q.replace(new RegExp(`(${kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+        '<span class="search-highlight">$1</span>');
+      item.innerHTML = `<span class="search-genre-tag" style="background:${g.color}">${g.name}</span>
+        <div class="search-result-q">${preview}</div>`;
+      item.onclick = () => startQuizFromSearch(gi, qi);
+      list.appendChild(item);
+    });
+  }
+  showScreen('searchScreen');
 }
 
-/* ===== 編集（並び替え）モード & ダークモード ===== */
-function toggleEdit(){
-  editMode=!editMode;
-  ['btn-edit','btn-edit2'].forEach(id=>{
-    const b=document.getElementById(id); if(!b) return;
-    b.classList.toggle('active',editMode);
-    b.textContent=editMode?'並び替え終了':'並び替え';
+function startQuizFromSearch(genreIdx, qIdx) {
+  isReviewMode = false;
+  currentGenreIdx = genreIdx;
+  const g = GENRES[genreIdx];
+  currentQuestions = g.questions.map((q,i) => ({...q, origIdx: i}));
+  currentQIdx = qIdx;
+  sessionCorrect = 0;
+  sessionWrong = 0;
+  sessionLog = [];
+  document.getElementById('quizTitle').textContent = g.name;
+  showScreen('quizScreen');
+  renderQuestion();
+}
+
+function updateCountdown() {
+  const exam = new Date('2026-11-29');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const diff = Math.ceil((exam - today) / 86400000);
+  const el = document.getElementById('examCountdown');
+  if(!el) return;
+  if(diff > 0) {
+    el.innerHTML = `<span class="exam-date">試験日：2026年11月29日（日）</span><span class="days-wrap">あと <span class="days">${diff}</span><span class="days-unit">日</span></span>`;
+  } else if(diff === 0) {
+    el.innerHTML = `<span class="exam-date">試験日：2026年11月29日（日）</span><span class="days" style="font-size:16px">本日試験日！</span>`;
+  } else {
+    el.innerHTML = `<span class="exam-date">試験日：2026年11月29日（日）</span><span>試験終了</span>`;
+  }
+}
+
+function updateTotalBadge() {
+  const kakomenYears = GENRES.filter(g => g.type === '4choice' && g.id.match(/^r\d+_kakomon$/)).length;
+  const oxCount = GENRES.filter(g => g.type !== '4choice').reduce((s,g) => s + g.questions.length, 0);
+  document.getElementById('totalBadge').textContent = `4択50問${kakomenYears}年分＋○×${oxCount}問`;
+}
+
+function showHome() {
+  saveSession();
+  renderGenreGrid();
+  updateReviewBadge();
+  updateCountdown();
+  updateTotalBadge();
+  showScreen('homeScreen');
+}
+
+function renderGenreGrid() {
+  const grid = document.getElementById('genreGrid');
+  grid.innerHTML = '';
+  if(isEditMode) grid.classList.add('edit-mode');
+  else grid.classList.remove('edit-mode');
+
+  const icons = ['🟤','🟢','🟠','🟣','🔴','🔵','🟡','🆕','📋','📖','🏛️','⚖️','🏗️','📜'];
+  const ordered = getOrderedGenres();
+
+  ordered.forEach((g, orderIdx) => {
+    const realIdx = genreOrder[orderIdx];
+    const total = g.questions.length;
+    const laps = (state._laps && state._laps[g.id]) || 0;
+    const curMap = (state._cur && state._cur[g.id]) || {};
+    const answered = Object.keys(curMap).length;
+    const correct = Object.values(curMap).filter(v => v === true).length;
+    const pct = answered > 0 ? Math.round(correct / answered * 100) : 0;
+    const BALL_COLORS = {'7':'#6D4C41','6':'#388E3C','5':'#E65100','4':'#6A1B9A','3':'#C62828','2':'#1565C0','1':'#F9A825'};
+    const kakomonMatch = g.id.match(/^r(\d+)_kakomon$/);
+    const ballColor = kakomonMatch ? (BALL_COLORS[kakomonMatch[1]] || g.color) : g.color;
+    const kakomonIconHtml = kakomonMatch
+      ? `<div class="genre-icon" style="background:${g.color}20;position:relative;">
+           <span style="font-size:1.2em;line-height:1;">${icons[realIdx]}</span>
+           <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none;">${kakomonMatch[1]}</span>
+         </div>`
+      : `<div class="genre-icon" style="background:${g.color}20">${icons[realIdx] || '📌'}</div>`;
+    const hasProgress = laps > 0 || answered > 0;
+    const lapLabel = hasProgress ? `<span style="font-size:10px;font-weight:600;background:${ballColor}22;color:${ballColor};border-radius:6px;padding:1px 6px;margin-left:5px;">${laps + 1}周目</span>` : '';
+    const card = document.createElement('div');
+    card.className = 'genre-card';
+    card.draggable = isEditMode;
+    card.dataset.orderIdx = orderIdx;
+    card.innerHTML = `
+      <div class="drag-handle">☰</div>
+      ${kakomonIconHtml}
+      <div class="genre-info">
+        <div class="genre-name">${g.name}${lapLabel}</div>
+        <div class="genre-meta">${answered}/${total}問 完了</div>
+        <div class="genre-progress"><div class="genre-progress-bar" style="width:${answered/total*100}%;background:${g.color}"></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <div class="genre-score" style="color:${ballColor}"><span class="genre-score-label">正解率</span>${answered>0?pct+'%':'--'}</div>
+        ${isEditMode ? `<button class="lap-reset-btn" title="周回リセット">↺ リセット</button>` : ''}
+      </div>
+    `;
+    if(!isEditMode) {
+      card.onclick = () => startQuiz(realIdx);
+    }
+    if(isEditMode) {
+      card.querySelector('.lap-reset-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        if(!confirm(`「${g.name}」の周回・進捗をリセットしますか？`)) return;
+        if(state._laps) delete state._laps[g.id];
+        if(state._cur) delete state._cur[g.id];
+        if(state._session) delete state._session[g.id];
+        if(state._history) delete state._history[g.id];
+        saveState();
+        renderGenreGrid();
+      });
+    }
+
+    // ドラッグイベント（PC）
+    card.addEventListener('dragstart', e => {
+      dragSrcIdx = orderIdx;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if(dragSrcIdx === null || dragSrcIdx === orderIdx) return;
+      const newOrder = [...genreOrder];
+      const [moved] = newOrder.splice(dragSrcIdx, 1);
+      newOrder.splice(orderIdx, 0, moved);
+      genreOrder = newOrder;
+      saveGenreOrder();
+      renderGenreGrid();
+    });
+
+    // タッチドラッグ（iPhone対応）
+    let touchStartY = 0;
+    let touchCard = null;
+    card.addEventListener('touchstart', e => {
+      if(!isEditMode) return;
+      touchStartY = e.touches[0].clientY;
+      touchCard = card;
+      dragSrcIdx = orderIdx;
+    }, {passive:true});
+    card.addEventListener('touchmove', e => {
+      if(!isEditMode) return;
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      const cards = [...grid.querySelectorAll('.genre-card')];
+      cards.forEach(c => c.classList.remove('drag-over'));
+      const target = cards.find(c => {
+        const r = c.getBoundingClientRect();
+        return y >= r.top && y <= r.bottom;
+      });
+      if(target && target !== card) target.classList.add('drag-over');
+    }, {passive:false});
+    card.addEventListener('touchend', e => {
+      if(!isEditMode) return;
+      const y = e.changedTouches[0].clientY;
+      const cards = [...grid.querySelectorAll('.genre-card')];
+      cards.forEach(c => c.classList.remove('drag-over'));
+      const targetCard = cards.find(c => {
+        const r = c.getBoundingClientRect();
+        return y >= r.top && y <= r.bottom && c !== card;
+      });
+      if(targetCard) {
+        const destIdx = parseInt(targetCard.dataset.orderIdx);
+        if(destIdx !== dragSrcIdx) {
+          const newOrder = [...genreOrder];
+          const [moved] = newOrder.splice(dragSrcIdx, 1);
+          newOrder.splice(destIdx, 0, moved);
+          genreOrder = newOrder;
+          saveGenreOrder();
+          renderGenreGrid();
+        }
+      }
+      dragSrcIdx = null;
+    });
+
+    grid.appendChild(card);
   });
-  renderSched(); renderTodos();
 }
-function toggleDark(){
-  const on=document.body.classList.toggle('dark');
-  localStorage.setItem(DARK,on?'1':'0');
-  ['btn-dark','btn-dark2'].forEach(id=>{
-    const b=document.getElementById(id); if(b) b.textContent=on?'☀ ライト':'🌙 ダーク';
+
+function saveSession() {
+  if(isReviewMode) return;
+  if(currentGenreIdx < 0 || currentGenreIdx >= GENRES.length) return;
+  const g = GENRES[currentGenreIdx];
+  // 最終問題まで完了していたら保存しない（次周は1問目から）
+  if(currentQIdx >= currentQuestions.length - 1 && currentQuestions.length === g.questions.length) return;
+  if(!state._session) state._session = {};
+  state._session[g.id] = {
+    order: currentQuestions.map(q => q.origIdx),
+    qIdx: currentQIdx,
+    log: sessionLog
+  };
+  saveState();
+}
+
+function startQuiz(genreIdx) {
+  isReviewMode = false;
+  currentGenreIdx = genreIdx;
+  const g = GENRES[genreIdx];
+  const saved = (state._session || {})[g.id];
+  const validSaved = saved && Array.isArray(saved.order)
+    && saved.order.length === g.questions.length
+    && saved.order.every(i => g.questions[i] && g.questions[i].q)
+    && typeof saved.qIdx === 'number' && saved.qIdx >= 0 && saved.qIdx < g.questions.length;
+  if(validSaved) {
+    currentQuestions = saved.order.map(origIdx => ({...g.questions[origIdx], origIdx}));
+    currentQIdx = saved.qIdx;
+    sessionLog = Array.isArray(saved.log) ? saved.log : [];
+  } else {
+    currentQuestions = g.questions.map((q,i) => ({...q, origIdx: i}));
+    if(g.type !== '4choice') {
+      for(let i = currentQuestions.length-1; i>0; i--) {
+        const j = Math.floor(Math.random()*(i+1));
+        [currentQuestions[i], currentQuestions[j]] = [currentQuestions[j], currentQuestions[i]];
+      }
+    }
+    currentQIdx = 0;
+    sessionLog = [];
+  }
+  sessionCorrect = sessionLog.filter(x => x.correct).length;
+  sessionWrong = sessionLog.length - sessionCorrect;
+  document.getElementById('quizTitle').textContent = g.name;
+  showScreen('quizScreen');
+  renderQuestion();
+}
+
+function restartToFirst() {
+  currentQIdx = 0;
+  saveSession();
+  document.getElementById('resultOverlay').classList.remove('show');
+  renderQuestion();
+}
+
+function updateRateIcon() {
+  const el = document.getElementById('rateIconPct');
+  if(!el) return;
+  const n = sessionLog.length;
+  const ok = sessionLog.filter(x => x.correct).length;
+  el.textContent = n ? Math.round(ok / n * 100) + '%' : '—';
+}
+
+function showSessionLog() {
+  const overlay = document.getElementById('sessionLogOverlay');
+  const list = document.getElementById('sessionLogList');
+  const title = document.getElementById('sessionLogTitle');
+  const summary = document.getElementById('sessionLogSummary');
+  const n = sessionLog.length;
+  const ok = sessionLog.filter(x => x.correct).length;
+  const ng = n - ok;
+  const pct = n ? Math.round(ok / n * 100) : 0;
+  title.textContent = `回答一覧（${n}問）`;
+  summary.innerHTML = `<span>正解 <b>${ok}</b></span><span>不正解 <b>${ng}</b></span><span>正解率 <b>${pct}%</b></span>`;
+  list.innerHTML = '';
+  if(n === 0) {
+    list.innerHTML = '<div class="session-log-empty">まだ回答した問題がありません</div>';
+  } else {
+    sessionLog.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'session-log-item';
+      const shortQ = item.q.replace(/\s+/g,' ').trim().slice(0, 55) + (item.q.length > 55 ? '…' : '');
+      div.innerHTML = `<div class="session-log-badge ${item.correct ? 'ok' : 'ng'}">${item.correct ? '○' : '×'}</div><div class="session-log-num">第${item.num}問</div><div class="session-log-text">${shortQ}</div>`;
+      list.appendChild(div);
+    });
+  }
+  overlay.classList.add('show');
+}
+
+function closeSessionLog(e) {
+  if(e && e.target !== document.getElementById('sessionLogOverlay')) return;
+  document.getElementById('sessionLogOverlay').classList.remove('show');
+}
+
+function prevQuestion() {
+  if(currentQIdx <= 0) return;
+  currentQIdx--;
+  saveSession();
+  document.getElementById('resultOverlay').classList.remove('show');
+  renderQuestion();
+}
+
+function startReviewQuiz() {
+  const revItems = Object.values(getReviewList());
+  if(revItems.length === 0) return;
+  isReviewMode = true;
+  currentGenreIdx = -1;
+  currentQuestions = revItems.map((item, i) => ({...item, origIdx: i}));
+  // shuffle
+  for(let i = currentQuestions.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [currentQuestions[i], currentQuestions[j]] = [currentQuestions[j], currentQuestions[i]];
+  }
+  currentQIdx = 0;
+  sessionCorrect = 0;
+  sessionWrong = 0;
+  sessionLog = [];
+  document.getElementById('quizTitle').textContent = '復習問題';
+  showScreen('quizScreen');
+  renderQuestion();
+}
+
+function is4Choice() {
+  if(isReviewMode) {
+    const q = currentQuestions[currentQIdx];
+    return !!q.choices;
+  }
+  return GENRES[currentGenreIdx] && GENRES[currentGenreIdx].type === '4choice';
+}
+
+function getCurrentKey() {
+  const q = currentQuestions[currentQIdx];
+  if(isReviewMode) return q._revKey || '';
+  const g = GENRES[currentGenreIdx];
+  return genKey(g.id, q.origIdx);
+}
+
+function renderQuestion() {
+  const total = currentQuestions.length;
+  const q = currentQuestions[currentQIdx];
+  const qEl = document.getElementById('questionText');
+  const qtext = (q && q.q) ? q.q : '';
+  const formatted = qtext.replace(/\s*([アイウエオ])\s+/g, '\n$1 ');
+  qEl.innerText = formatted;
+  document.getElementById('questionNum').textContent = `第 ${currentQIdx+1} 問`;
+  document.getElementById('quizCounter').textContent = `${currentQIdx+1}/${total}`;
+  document.getElementById('progressBar').style.width = `${(currentQIdx/total)*100}%`;
+  document.getElementById('resultOverlay').classList.remove('show');
+  updateRateIcon();
+
+  // 過去周回の正誤履歴バッジ
+  const lapHistEl = document.getElementById('lapHistory');
+  lapHistEl.innerHTML = '';
+  if(!isReviewMode && currentGenreIdx >= 0) {
+    const g = GENRES[currentGenreIdx];
+    const hist = (state._history && state._history[g.id] && state._history[g.id][q.origIdx]) || [];
+    hist.forEach((ok, i) => {
+      const span = document.createElement('span');
+      span.className = 'lap-badge ' + (ok ? 'ok' : 'ng');
+      span.textContent = `${i+1}周${ok ? '○' : '×'}`;
+      lapHistEl.appendChild(span);
+    });
+  }
+
+  if(is4Choice()) {
+    document.getElementById('answerBtns').style.display = 'none';
+    const cb = document.getElementById('choiceBtns');
+    cb.style.display = 'flex';
+    cb.innerHTML = '';
+    Object.entries(q.choices).forEach(([num, txt]) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = num + '. ' + txt;
+      btn.onclick = () => answer4(parseInt(num));
+      cb.appendChild(btn);
+    });
+  } else {
+    document.getElementById('answerBtns').style.display = 'flex';
+    document.getElementById('choiceBtns').style.display = 'none';
+  }
+}
+
+function showResultOverlay(correct, q) {
+  const badge = document.getElementById('resultBadge');
+  const ansText = document.getElementById('resultAnswerText');
+  const expl = document.getElementById('resultExplanation');
+  const nextBtn = document.getElementById('nextBtn');
+  const revBtn = document.getElementById('reviewCheckBtn');
+
+  badge.textContent = correct ? '✓ 正解！' : '✗ 不正解';
+  badge.className = 'result-badge ' + (correct ? 'correct' : 'wrong');
+
+  if(is4Choice()) {
+    ansText.textContent = `正解: ${q.answer}. ${q.choices[String(q.answer)] || ''}`;
+    expl.textContent = q.explanation || '';
+    expl.style.display = q.explanation ? 'block' : 'none';
+  } else {
+    ansText.textContent = `正解: ${q.a ? '○（正しい）' : '×（誤り）'}`;
+    expl.textContent = q.e || '';
+    expl.style.display = q.e ? 'block' : 'none';
+  }
+
+  // 復習ボタン状態
+  const rkey = isReviewMode ? (q._revKey||'') : getCurrentKey();
+  const inReview = !!(state._review && state._review[rkey]);
+  revBtn.textContent = inReview ? '★ 復習リストに追加済み' : '☆ 復習リストに追加';
+  revBtn.className = 'review-check-btn' + (inReview ? ' checked' : '');
+
+  const isLast = currentQIdx === currentQuestions.length - 1;
+  nextBtn.textContent = isLast ? '結果を見る →' : '次の問題 →';
+  document.getElementById('resultOverlay').classList.add('show');
+}
+
+function toggleReview() {
+  const q = currentQuestions[currentQIdx];
+  const g = isReviewMode ? null : GENRES[currentGenreIdx];
+  const rkey = isReviewMode ? (q._revKey || '') : genKey(g.id, q.origIdx);
+  if(!rkey) return;
+
+  if(!state._review) state._review = {};
+  if(state._review[rkey]) {
+    delete state._review[rkey];
+    document.getElementById('reviewCheckBtn').textContent = '☆ 復習リストに追加';
+    document.getElementById('reviewCheckBtn').className = 'review-check-btn';
+  } else {
+    const item = {
+      _revKey: rkey,
+      q: q.q,
+      a: q.a,
+      e: q.e || '',
+      choices: q.choices || null,
+      answer: q.answer || null,
+      explanation: q.explanation || '',
+    };
+    state._review[rkey] = item;
+    document.getElementById('reviewCheckBtn').textContent = '★ 復習リストに追加済み';
+    document.getElementById('reviewCheckBtn').className = 'review-check-btn checked';
+  }
+  saveState();
+  updateReviewBadge();
+}
+
+function answer4(userAnswer) {
+  const q = currentQuestions[currentQIdx];
+  const correct = userAnswer === q.answer;
+  const btns = document.getElementById('choiceBtns').querySelectorAll('.choice-btn');
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    const num = i + 1;
+    if(num === q.answer) btn.classList.add('correct');
+    else if(num === userAnswer && !correct) btn.classList.add('wrong');
   });
+
+  if(correct) sessionCorrect++; else sessionWrong++;
+  sessionLog.push({num: currentQIdx + 1, correct, q: q.q});
+  updateRateIcon();
+  if(!isReviewMode) {
+    const g = GENRES[currentGenreIdx];
+    const key = genKey(g.id, q.origIdx);
+    state[key] = correct;
+    if(!state._cur) state._cur = {};
+    if(!state._cur[g.id]) state._cur[g.id] = {};
+    state._cur[g.id][q.origIdx] = correct;
+    const lapNum = (state._laps && state._laps[g.id]) || 0;
+    if(!state._history) state._history = {};
+    if(!state._history[g.id]) state._history[g.id] = {};
+    if(!state._history[g.id][q.origIdx]) state._history[g.id][q.origIdx] = [];
+    state._history[g.id][q.origIdx][lapNum] = correct;
+    if(!correct) {
+      if(!state._wrong) state._wrong = {};
+      state._wrong[key] = {gid: g.id, gname: g.name, q: q.q, a: '選択肢' + q.answer, e: q.choices[String(q.answer)] || ''};
+    } else {
+      if(state._wrong) delete state._wrong[key];
+    }
+    saveState();
+  }
+  showResultOverlay(correct, q);
 }
 
-/* ===== 凡例・基準表 ===== */
-function renderLegend(){
-  document.getElementById('legend').innerHTML=TASKS.map(t=>
-    `<span><i style="background:${t.color}"></i>${taskName(t)}</span>`).join('');
-}
-function renderRules(){
-  document.getElementById('rule-body').innerHTML=TASKS.map((t,i)=>{
-    const flow=t.noCheck?'（チェックなし・表記のみ）':t.stages.join(' → ');
-    return `<tr><td>${i+1}</td>
-      <td><span class="chk" style="display:inline-flex;background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)};min-height:auto;padding:2px 8px">${taskName(t)}</span>
-      <div style="font-size:11px;color:var(--sub);margin-top:3px">${flow}</div></td>
-      <td>${t.rule}</td></tr>`;
-  }).join('');
+function answer(userAnswer) {
+  const q = currentQuestions[currentQIdx];
+  const correct = userAnswer === q.a;
+  if(correct) sessionCorrect++; else sessionWrong++;
+  sessionLog.push({num: currentQIdx + 1, correct, q: q.q});
+  updateRateIcon();
+
+  if(!isReviewMode) {
+    const g = GENRES[currentGenreIdx];
+    const key = genKey(g.id, q.origIdx);
+    state[key] = correct;
+    if(!state._cur) state._cur = {};
+    if(!state._cur[g.id]) state._cur[g.id] = {};
+    state._cur[g.id][q.origIdx] = correct;
+    const lapNum = (state._laps && state._laps[g.id]) || 0;
+    if(!state._history) state._history = {};
+    if(!state._history[g.id]) state._history[g.id] = {};
+    if(!state._history[g.id][q.origIdx]) state._history[g.id][q.origIdx] = [];
+    state._history[g.id][q.origIdx][lapNum] = correct;
+    if(!correct) {
+      if(!state._wrong) state._wrong = {};
+      state._wrong[key] = {gid: g.id, gname: g.name, q: q.q, a: q.a, e: q.e};
+    } else {
+      if(state._wrong) delete state._wrong[key];
+    }
+    saveState();
+  }
+  showResultOverlay(correct, q);
 }
 
-/* ===== タブ ===== */
-function show(p){
-  ['input','sched','todo','rule'].forEach(x=>{
-    document.getElementById('page-'+x).style.display = x===p?'block':'none';
-    document.getElementById('tab-'+x).classList.toggle('active', x===p);
-  });
-  if(p==='sched') renderSched();
-  if(p==='todo') renderTodos();
+function nextQuestion() {
+  const isLast = currentQIdx === currentQuestions.length - 1;
+  if(isLast) {
+    if(!isReviewMode) {
+      const gid = GENRES[currentGenreIdx].id;
+      if(!state._session) state._session = {};
+      delete state._session[gid];
+      if(!state._laps) state._laps = {};
+      state._laps[gid] = ((state._laps[gid]) || 0) + 1;
+      if(state._cur) delete state._cur[gid];
+      saveState();
+    }
+    showResult();
+  } else {
+    currentQIdx++;
+    saveSession();
+    renderQuestion();
+  }
 }
 
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function showResult() {
+  const total = currentQuestions.length;
+  const pct = Math.round(sessionCorrect / total * 100);
+  const name = isReviewMode ? '復習問題' : GENRES[currentGenreIdx].name;
+  document.getElementById('finalGenreName').textContent = name;
+  document.getElementById('finalPct').textContent = pct + '%';
+  document.getElementById('finalCorrect').textContent = sessionCorrect;
+  document.getElementById('finalWrong').textContent = sessionWrong;
+  document.getElementById('finalTotal').textContent = total;
+  showScreen('resultScreen');
+}
 
-/* ===== 起動 ===== */
-(function init(){
-  document.getElementById('today').textContent='本日：'+new Date().toLocaleDateString('ja-JP');
-  document.getElementById('year-label').textContent=curYear+'年';
-  if(localStorage.getItem(DARK)==='1'){ document.body.classList.add('dark');
-    ['btn-dark','btn-dark2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀ ライト';}); }
-  fillMonthSelects(); fillCodeList(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos();
-})();
+function retryQuiz() {
+  if(isReviewMode) startReviewQuiz();
+  else startQuiz(currentGenreIdx);
+}
+
+function showWrongList() {
+  const list = document.getElementById('wrongList');
+  list.innerHTML = '';
+  const wrongs = state._wrong || {};
+  const items = Object.values(wrongs);
+  if(items.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:#999;font-size:15px;">まだ間違えた問題はありません</div>';
+  } else {
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `
+        <div class="list-item-q">${item.q}</div>
+        <div class="list-item-a">正解: ${item.a === true ? '○（正しい）' : item.a === false ? '×（誤り）' : item.a}</div>
+        <div class="list-item-e">${item.e}</div>
+      `;
+      list.appendChild(div);
+    });
+  }
+  showScreen('wrongScreen');
+}
+
+function showReviewScreen() {
+  const revItems = Object.entries(getReviewList());
+  const list = document.getElementById('reviewList');
+  const countEl = document.getElementById('reviewCount');
+  const startBtn = document.getElementById('reviewStartBtn');
+  list.innerHTML = '';
+
+  countEl.textContent = `${revItems.length}問 チェック中`;
+  startBtn.style.display = revItems.length > 0 ? 'block' : 'none';
+
+  if(revItems.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:#999;font-size:15px;">復習リストは空です<br><br>問題を解いた後、解説画面の<br>「復習リストに追加」から登録できます</div>';
+  } else {
+    revItems.forEach(([rkey, item]) => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      const ansLabel = item.choices
+        ? `正解: ${item.answer}. ${item.choices[String(item.answer)] || ''}`
+        : `正解: ${item.a === true ? '○（正しい）' : '×（誤り）'}`;
+      const explText = item.explanation || item.e || '';
+      div.innerHTML = `
+        <button class="review-del-btn" onclick="removeReview('${rkey}')">削除</button>
+        <div class="list-item-q">${item.q}</div>
+        <div class="list-item-a">${ansLabel}</div>
+        ${explText ? `<div class="list-item-e">${explText}</div>` : ''}
+      `;
+      list.appendChild(div);
+    });
+  }
+  showScreen('reviewScreen');
+}
+
+function removeReview(rkey) {
+  if(state._review) delete state._review[rkey];
+  saveState();
+  updateReviewBadge();
+  showReviewScreen();
+}
+
+function resetAll() {
+  if(!confirm('全ての学習記録をリセットしますか？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = {};
+  updateReviewBadge();
+  renderGenreGrid();
+}
+
+// ===== 並び替え =====
+let genreOrder = loadGenreOrder();
+let isEditMode = false;
+let dragSrcIdx = null;
+
+function loadGenreOrder() {
+  // 過去問ジャンル(r\d+_kakomon)は常に年度降順で先頭に固定
+  const kakomonIds = GENRES
+    .map(g => g.id)
+    .filter(id => /^r\d+_kakomon$/.test(id))
+    .sort((a, b) => {
+      const ya = parseInt(a.match(/\d+/)[0]);
+      const yb = parseInt(b.match(/\d+/)[0]);
+      return yb - ya;
+    });
+  try {
+    const saved = JSON.parse(localStorage.getItem('mgr_genre_order_v2'));
+    if(saved && Array.isArray(saved)) {
+      const savedIds = saved.filter(id => GENRES.findIndex(g => g.id === id) >= 0);
+      // 非過去問の保存順を復元（過去問は除外）
+      const nonKakomonSaved = savedIds.filter(id => !/^r\d+_kakomon$/.test(id));
+      const newNonKakomon = GENRES.map(g => g.id).filter(id => !/^r\d+_kakomon$/.test(id) && !nonKakomonSaved.includes(id));
+      const allIds = [...kakomonIds, ...nonKakomonSaved, ...newNonKakomon];
+      return allIds.map(id => GENRES.findIndex(g => g.id === id));
+    }
+  } catch(e) {}
+  return GENRES.map((_, i) => i);
+}
+
+function saveGenreOrder() {
+  const ids = genreOrder.map(i => GENRES[i].id);
+  localStorage.setItem('mgr_genre_order_v2', JSON.stringify(ids));
+}
+
+function getOrderedGenres() {
+  return genreOrder.map(i => GENRES[i]);
+}
+
+function toggleEditMode() {
+  isEditMode = !isEditMode;
+  document.getElementById('editBtn').style.display = isEditMode ? 'none' : 'block';
+  document.getElementById('editDoneBtn').style.display = isEditMode ? 'block' : 'none';
+  document.getElementById('darkToggleBtn').style.display = isEditMode ? 'block' : 'none';
+  const grid = document.getElementById('genreGrid');
+  if(isEditMode) grid.classList.add('edit-mode');
+  else grid.classList.remove('edit-mode');
+  renderGenreGrid();
+}
+
+let isDarkMode = localStorage.getItem('mgr_dark_mode') === '1';
+function applyDarkMode() {
+  document.body.classList.toggle('dark-mode', isDarkMode);
+  const btn = document.getElementById('darkToggleBtn');
+  if(btn) btn.textContent = isDarkMode ? '☀️ 背景を白に' : '🌙 背景を黒に';
+}
+function toggleDarkMode() {
+  isDarkMode = !isDarkMode;
+  localStorage.setItem('mgr_dark_mode', isDarkMode ? '1' : '0');
+  applyDarkMode();
+}
+applyDarkMode();
+
+// Init
+renderGenreGrid();
+updateReviewBadge();
+
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+document.getElementById('resultCircle').addEventListener('click', showSessionLog);
 </script>
 </body>
 </html>
