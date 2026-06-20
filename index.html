@@ -57,13 +57,16 @@
   .muted{color:#94a3b8;}
   /* ===== タスク管理表 ===== */
   .sched-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;
-    -webkit-overflow-scrolling:touch;}
+    -webkit-overflow-scrolling:touch;max-height:calc(100vh - 230px);}
   .sched{border-collapse:collapse;}
   .sched th,.sched td{border:1px solid var(--line);padding:0;vertical-align:top;}
   .sched thead th{background:#1e293b;color:#fff;position:sticky;top:0;z-index:2;
     text-align:center;font-weight:700;padding:8px 4px;font-size:12px;}
   .sched th.mhead{width:56px;min-width:56px;}
-  .sched .pcol{position:sticky;left:0;background:var(--pcolbg);z-index:1;text-align:left;
+  .sched .nocol{position:sticky;left:0;background:var(--pcolbg);z-index:1;text-align:center;
+    width:32px;min-width:32px;max-width:32px;font-weight:700;font-size:12px;padding:6px 2px;color:var(--sub);}
+  .sched thead .nocol{background:#0f172a;z-index:3;color:#fff;}
+  .sched .pcol{position:sticky;left:32px;background:var(--pcolbg);z-index:1;text-align:left;
     min-width:112px;max-width:132px;font-weight:600;padding:6px 8px;}
   .sched thead .pcol{background:#0f172a;z-index:3;}
   .sched td.mcell{padding:2px;height:1px;}
@@ -91,7 +94,9 @@
   .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
   .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
   .sched-bar .spacer{flex:1;}
-  .year-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .year-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .totals{margin-left:auto;font-size:13px;font-weight:600;color:var(--sub);}
+  .totals b{color:var(--ink);font-size:15px;}
   .year-label{font-size:18px;font-weight:700;min-width:72px;text-align:center;color:var(--accent);}
   /* やることリスト（カード・グリッド） */
   /* やること追加バー */
@@ -165,8 +170,9 @@
       <p class="hint">※タスクは各月（1〜12月）に自動で割り当てられます。年をまたぐ計算にも対応しています。</p>
       <div class="form-grid">
         <div class="field">
-          <label>① マンションコード</label>
-          <input id="f-code" type="text" placeholder="例：2321">
+          <label>① マンションコード <span class="muted">(入力で②〜⑥を自動表示)</span></label>
+          <input id="f-code" type="text" placeholder="例：2321" list="code-list" oninput="autofillByCode()">
+          <datalist id="code-list"></datalist>
         </div>
         <div class="field">
           <label>② マンション名</label>
@@ -185,7 +191,7 @@
           <select id="f-meeting"></select>
         </div>
         <div class="field">
-          <label>⑥ 契約満了月 <span class="muted">(申出書計算に使用)</span></label>
+          <label>⑥ 契約満了月</label>
           <select id="f-expire"></select>
         </div>
       </div>
@@ -223,6 +229,7 @@
         <button class="btn btn-sm btn-ghost" onclick="changeYear(-1)">◀ 前年</button>
         <span id="year-label" class="year-label"></span>
         <button class="btn btn-sm btn-ghost" onclick="changeYear(1)">翌年 ▶</button>
+        <span id="sched-totals" class="totals"></span>
       </div>
       <div class="sched-scroll">
         <table class="sched">
@@ -300,6 +307,23 @@ const TASKS = [
     stages:['収支仮締め','仮締め申請中','収支仮締め完了']},
 ];
 function taskName(t){ return t.label || (t.stages ? t.stages[0] : ''); }
+
+/* ===== マンション マスターデータ（コードから②〜⑥を自動入力） ===== */
+const MASTER = [
+  {code:'53',   name:'泉佐野SH',     units:111, settle:3,  meeting:6,  expire:6},
+  {code:'154',  name:'ES山本',       units:100, settle:3,  meeting:6,  expire:7},
+  {code:'236',  name:'SC泉ケ丘',     units:65,  settle:1,  meeting:4,  expire:5},
+  {code:'670',  name:'北野田大発',   units:103, settle:3,  meeting:6,  expire:6},
+  {code:'2195', name:'APA北畠',      units:81,  settle:12, meeting:3,  expire:3},
+  {code:'2321', name:'朝日P天王寺',  units:427, settle:3,  meeting:6,  expire:6},
+  {code:'2328', name:'RC八尾志紀',   units:59,  settle:3,  meeting:5,  expire:5},
+  {code:'2365', name:'GA阿倍野',     units:27,  settle:8,  meeting:11, expire:11},
+  {code:'2471', name:'VN大和郡山',   units:75,  settle:11, meeting:2,  expire:2},
+  {code:'2564', name:'泉北鴨谷台',   units:165, settle:3,  meeting:5,  expire:6},
+  {code:'2616', name:'AN和泉中央',   units:135, settle:2,  meeting:5,  expire:5},
+  {code:'3844', name:'RHG和泉',      units:260, settle:3,  meeting:5,  expire:6},
+  {code:'5103', name:'奈良CP',       units:98,  settle:2,  meeting:4,  expire:4},
+];
 
 const STORE='kanken_props_v1', CHECKS='kanken_checks_v1',
       TODOS='kanken_todos_v1', DARK='kanken_dark_v1';
@@ -379,6 +403,19 @@ function fillMonthSelects(){
   ['f-settle','f-meeting','f-expire'].forEach(id=>document.getElementById(id).innerHTML=opts);
 }
 
+/* ===== コード→マスターデータ自動入力 ===== */
+function fillCodeList(){
+  document.getElementById('code-list').innerHTML=
+    MASTER.map(m=>`<option value="${esc(m.code)}">${esc(m.name)}</option>`).join('');
+}
+function autofillByCode(){
+  const code=val('f-code');
+  const m=MASTER.find(x=>x.code===code);
+  if(!m) return; // 該当なし＝手入力のまま
+  setv('f-name',m.name); setv('f-units',m.units);
+  setv('f-settle',m.settle); setv('f-meeting',m.meeting); setv('f-expire',m.expire);
+}
+
 /* ===== 物件 保存/編集/削除 ===== */
 function val(id){ return document.getElementById(id).value.trim(); }
 function setv(id,v){ document.getElementById(id).value=v||''; }
@@ -430,10 +467,15 @@ function renderList(){
 /* ===== スケジュール描画 ===== */
 function renderSched(){
   const head=document.getElementById('sched-head');
-  head.innerHTML='<th class="pcol">マンション</th>'+
+  head.innerHTML='<th class="nocol">No</th><th class="pcol">マンション</th>'+
     Array.from({length:12},(_,i)=>`<th class="mhead">${i+1}月</th>`).join('');
+  const tot=document.getElementById('sched-totals');
+  if(tot){
+    const units=props.reduce((s,p)=>s+(+p.units||0),0);
+    tot.innerHTML=`総棟数 <b>${props.length}</b> 棟 ／ 総戸数 <b>${units}</b> 戸`;
+  }
   const body=document.getElementById('sched-body');
-  if(!props.length){ body.innerHTML='<tr><td colspan="13" class="empty">マンションを登録するとここに表示されます</td></tr>'; return; }
+  if(!props.length){ body.innerHTML='<tr><td colspan="14" class="empty">マンションを登録するとここに表示されます</td></tr>'; return; }
 
   const yc=yearChecks();
   body.innerHTML=props.map((p,pi)=>{
@@ -461,7 +503,7 @@ function renderSched(){
     const reorder=editMode?`<div class="reorder">
       <button class="mini" onclick="moveProp(${pi},-1)">▲</button>
       <button class="mini" onclick="moveProp(${pi},1)">▼</button></div>`:'';
-    return `<tr><td class="pcol"><div class="pname">${esc(p.name)}</div>
+    return `<tr><td class="nocol">${pi+1}</td><td class="pcol"><div class="pname">${esc(p.name)}</div>
       <div class="pmeta">${meta}</div>${reorder}</td>${tds}</tr>`;
   }).join('');
 }
@@ -576,7 +618,7 @@ function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
   document.getElementById('year-label').textContent=curYear+'年';
   if(localStorage.getItem(DARK)==='1'){ document.body.classList.add('dark');
     ['btn-dark','btn-dark2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀ ライト';}); }
-  fillMonthSelects(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos();
+  fillMonthSelects(); fillCodeList(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos();
 })();
 </script>
 </body>
