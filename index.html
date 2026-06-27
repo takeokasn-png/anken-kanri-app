@@ -131,6 +131,13 @@
     border-radius:6px;background:var(--panel);color:var(--ink);}
   .todo-due-edit{max-width:140px;}
   /* ===== カレンダー ===== */
+  .cal-title{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .cal-title h2{margin:0;}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;font-weight:600;color:var(--ink);}
+  .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .cal-legend i{width:16px;height:16px;border-radius:4px;display:inline-block;}
+  .cal-legend i.pri-high{background:#dc2626;} .cal-legend i.pri-mid{background:#d97706;}
+  .cal-legend i.pri-low{background:#0891b2;} .cal-legend i.pri-meeting{background:#7c3aed;}
   .cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .cal-label{font-weight:700;font-size:16px;min-width:120px;text-align:center;}
   .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
@@ -282,21 +289,21 @@
       <p class="hint">優先度ごとにまとめて表示されます（高→中→低）。完了したらタップでチェック。</p>
       <div class="todo-addbar">
         <select id="todo-prop"></select>
-        <select id="todo-pri">
+        <select id="todo-pri" onchange="onPriChange()">
           <option value="high">優先度：高</option>
           <option value="mid" selected>優先度：中</option>
           <option value="low">優先度：低</option>
           <option value="meeting">集会</option>
         </select>
         <input type="date" id="todo-due" title="期限（任意）">
-        <input class="ti" id="todo-in" list="todo-presets" placeholder="やること内容を入力（選択も可）…" onkeydown="if(event.key==='Enter')addTodo()">
-        <datalist id="todo-presets">
-          <option value="理事会">
-          <option value="決算理事会">
-          <option value="定期総会">
-          <option value="臨時総会">
-          <option value="修繕委員会">
-        </datalist>
+        <input class="ti" id="todo-in" placeholder="やること内容を入力…" onkeydown="if(event.key==='Enter')addTodo()">
+        <select class="ti" id="todo-in-sel" style="display:none">
+          <option value="理事会">理事会</option>
+          <option value="決算理事会">決算理事会</option>
+          <option value="定期総会">定期総会</option>
+          <option value="臨時総会">臨時総会</option>
+          <option value="修繕委員会">修繕委員会</option>
+        </select>
         <button class="btn btn-sm btn-primary" onclick="addTodo()">追加</button>
         <span class="spacer" style="flex:1"></span>
         <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
@@ -308,7 +315,15 @@
   <!-- ============ カレンダーページ ============ -->
   <section id="page-cal" style="display:none">
     <div class="panel">
-      <h2>やること カレンダー</h2>
+      <div class="cal-title">
+        <h2>やること カレンダー</h2>
+        <div class="cal-legend">
+          <span><i class="pri-high"></i>高</span>
+          <span><i class="pri-mid"></i>中</span>
+          <span><i class="pri-low"></i>低</span>
+          <span><i class="pri-meeting"></i>集会</span>
+        </div>
+      </div>
       <p class="hint">やることリストで期限を設定した項目が、その日付に表示されます。</p>
       <div class="cal-nav">
         <button class="btn btn-sm btn-ghost" onclick="changeCalMonth(-1)">◀ 前月</button>
@@ -639,15 +654,24 @@ function renderTodos(){
     <ul class="todo-list">${drows}</ul></div>`;
   el.innerHTML=html;
 }
+function onPriChange(){
+  const pri=document.getElementById('todo-pri').value;
+  const txt=document.getElementById('todo-in'), sel=document.getElementById('todo-in-sel');
+  const meeting=pri==='meeting';
+  txt.style.display=meeting?'none':'';
+  sel.style.display=meeting?'':'none';
+}
 function addTodo(){
   const id=document.getElementById('todo-prop').value;
   const pri=document.getElementById('todo-pri').value;
   const dueEl=document.getElementById('todo-due'), due=dueEl.value;
-  const inp=document.getElementById('todo-in'), v=inp.value.trim();
+  const txt=document.getElementById('todo-in'), sel=document.getElementById('todo-in-sel');
+  const v=(pri==='meeting'?sel.value:txt.value).trim();
   if(!id){ alert('物件を選択してください'); return; }
   if(!v) return;
   todos[id]=todos[id]||[]; todos[id].push({t:v,done:false,pri,due});
-  persistTodos(); inp.value=''; dueEl.value=''; renderTodos(); renderCal(); inp.focus();
+  persistTodos(); txt.value=''; dueEl.value=''; renderTodos(); renderCal();
+  if(pri!=='meeting') txt.focus();
 }
 function toggleTodo(id,j){
   if(!todos[id]||!todos[id][j]) return;
