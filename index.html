@@ -114,6 +114,7 @@
   .pri-high .pri-badge,.pb-high{background:#dc2626;}
   .pri-mid  .pri-badge,.pb-mid {background:#d97706;}
   .pri-low  .pri-badge,.pb-low {background:#0891b2;}
+  .pri-done .pri-badge,.pb-done{background:#64748b;}
   .todo-list{list-style:none;margin:0;padding:0;}
   .todo-item{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13px;
     border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel);}
@@ -145,6 +146,7 @@
   .cal-ev.pri-high{background:#dc2626;} .cal-ev.pri-mid{background:#d97706;} .cal-ev.pri-low{background:#0891b2;}
   .cal-ev.done{opacity:.5;text-decoration:line-through;}
   .cal-ev .cev-prop{display:block;font-size:9px;opacity:.85;}
+  .show-chk{width:20px;height:20px;cursor:pointer;accent-color:var(--accent);}
   .rule-tbl td,.rule-tbl th{border:1px solid var(--line);padding:6px 10px;font-size:12px;}
   .rule-tbl th{background:var(--thbg);}
   .hint{font-size:12px;color:var(--sub);margin:-6px 0 14px;}
@@ -231,7 +233,7 @@
       <h2>登録済みマンション一覧</h2>
       <table class="list-tbl">
         <thead>
-          <tr><th>No</th><th>コード</th><th>マンション名</th><th>戸数</th>
+          <tr><th>No</th><th>反映</th><th>コード</th><th>マンション名</th><th>戸数</th>
           <th>決算月</th><th>総会月</th><th>契約満了月</th><th>操作</th></tr>
         </thead>
         <tbody id="list-body"></tbody>
@@ -490,6 +492,11 @@ function delProp(i){
   if(!confirm(`「${props[i].name}」を削除しますか？`)) return;
   props.splice(i,1); persist(); renderList(); renderSched(); renderTodos();
 }
+function toggleShow(i){
+  if(!props[i]) return;
+  props[i].show = props[i].show===false ? true : false;
+  persist(); renderSched();
+}
 function moveProp(i,dir){
   const j=i+dir; if(j<0||j>=props.length) return;
   [props[i],props[j]]=[props[j],props[i]];
@@ -499,10 +506,12 @@ function moveProp(i,dir){
 /* ===== 一覧描画 ===== */
 function renderList(){
   const b=document.getElementById('list-body');
-  if(!props.length){ b.innerHTML='<tr><td colspan="8" class="muted" style="padding:24px">未登録です</td></tr>'; return; }
+  if(!props.length){ b.innerHTML='<tr><td colspan="9" class="muted" style="padding:24px">未登録です</td></tr>'; return; }
   b.innerHTML=props.map((p,i)=>`
     <tr>
-      <td>${i+1}</td><td>${esc(p.code)}</td><td style="text-align:left">${esc(p.name)}</td>
+      <td>${i+1}</td>
+      <td><input type="checkbox" class="show-chk" ${p.show===false?'':'checked'} onchange="toggleShow(${i})" title="タスク管理表に反映"></td>
+      <td>${esc(p.code)}</td><td style="text-align:left">${esc(p.name)}</td>
       <td>${esc(p.units)}</td><td>${p.settle?p.settle+'月':'—'}</td>
       <td>${p.meeting?p.meeting+'月':'—'}</td><td>${p.expire?p.expire+'月':'—'}</td>
       <td>
@@ -517,16 +526,21 @@ function renderSched(){
   const head=document.getElementById('sched-head');
   head.innerHTML='<th class="nocol">No</th><th class="pcol">マンション</th>'+
     Array.from({length:12},(_,i)=>`<th class="mhead">${i+1}月</th>`).join('');
+  const shown=props.filter(p=>p.show!==false);
   const tot=document.getElementById('sched-totals');
   if(tot){
-    const units=props.reduce((s,p)=>s+(+p.units||0),0);
-    tot.innerHTML=`総棟数 <b>${props.length}</b> 棟 ／ 総戸数 <b>${units}</b> 戸`;
+    const units=shown.reduce((s,p)=>s+(+p.units||0),0);
+    tot.innerHTML=`総棟数 <b>${shown.length}</b> 棟 ／ 総戸数 <b>${units}</b> 戸`;
   }
   const body=document.getElementById('sched-body');
   if(!props.length){ body.innerHTML='<tr><td colspan="14" class="empty">マンションを登録するとここに表示されます</td></tr>'; return; }
+  if(!shown.length){ body.innerHTML='<tr><td colspan="14" class="empty">「登録済みマンション一覧」の「反映」にチェックを入れると表示されます</td></tr>'; return; }
 
   const yc=yearChecks();
+  let no=0;
   body.innerHTML=props.map((p,pi)=>{
+    if(p.show===false) return '';
+    no++;
     const id=pid(p), cdone=yc[id]||{};
     const cells=Array.from({length:12},()=>[]);
     TASKS.forEach(t=>{
@@ -551,7 +565,7 @@ function renderSched(){
     const reorder=editMode?`<div class="reorder">
       <button class="mini" onclick="moveProp(${pi},-1)">▲</button>
       <button class="mini" onclick="moveProp(${pi},1)">▼</button></div>`:'';
-    return `<tr><td class="nocol">${pi+1}</td><td class="pcol"><div class="pname">${esc(p.name)}</div>
+    return `<tr><td class="nocol">${no}</td><td class="pcol"><div class="pname">${esc(p.name)}</div>
       <div class="pmeta">${meta}</div>${reorder}</td>${tds}</tr>`;
   }).join('');
 }
@@ -574,14 +588,10 @@ function renderTodos(){
   fillTodoProps();
   const el=document.getElementById('todo-side');
   if(!props.length){ el.innerHTML='<div class="empty">マンションを登録するとここに表示されます</div>'; return; }
-  // 全物件のやることを1配列に集約（優先度→未完了優先で並べる）
+  // 全物件のやることを1配列に集約
   const all=[];
   for(const id in todos){ (todos[id]||[]).forEach((it,j)=>all.push({id,j,it})); }
-  let html='';
-  ['high','mid','low'].forEach(pk=>{
-    const group=all.filter(x=>x.it.pri===pk)
-      .sort((a,b)=> (a.it.done-b.it.done)); // 未完了を上に
-    const rows=group.length ? group.map(({id,j,it})=>`
+  const row=({id,j,it})=>`
       <li class="todo-item ${it.done?'done':''}">
         <span class="todo-chk" onclick="toggleTodo('${jsq(id)}',${j})">${it.done?'✓':'○'}</span>
         <span class="todo-prop">${esc(propName(id))}</span>
@@ -593,11 +603,23 @@ function renderTodos(){
         </select>
         <input type="date" class="todo-due-edit" value="${esc(it.due||'')}" onchange="changeDue('${jsq(id)}',${j},this.value)">
         <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
-      </li>`).join('') : `<li class="todo-empty">なし</li>`;
+      </li>`;
+  let html='';
+  // 優先度グループ（未完了のみ）
+  ['high','mid','low'].forEach(pk=>{
+    const group=all.filter(x=>x.it.pri===pk && !x.it.done);
+    const rows=group.length ? group.map(row).join('') : `<li class="todo-empty">なし</li>`;
     html+=`<div class="pri-group pri-${pk}">
       <h3 class="pri-head"><span class="pri-badge">優先度 ${PRI[pk].label}</span></h3>
       <ul class="todo-list">${rows}</ul></div>`;
   });
+  // 完了済グループ
+  const doneList=all.filter(x=>x.it.done)
+    .sort((a,b)=>(PRI[a.it.pri].order-PRI[b.it.pri].order));
+  const drows=doneList.length ? doneList.map(row).join('') : `<li class="todo-empty">なし</li>`;
+  html+=`<div class="pri-group pri-done">
+    <h3 class="pri-head"><span class="pri-badge pb-done">完了済</span></h3>
+    <ul class="todo-list">${drows}</ul></div>`;
   el.innerHTML=html;
 }
 function addTodo(){
