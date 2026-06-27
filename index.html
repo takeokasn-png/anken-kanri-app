@@ -114,6 +114,7 @@
   .pri-high .pri-badge,.pb-high{background:#dc2626;}
   .pri-mid  .pri-badge,.pb-mid {background:#d97706;}
   .pri-low  .pri-badge,.pb-low {background:#0891b2;}
+  .pri-meeting .pri-badge,.pb-meeting{background:#7c3aed;}
   .pri-done .pri-badge,.pb-done{background:#64748b;}
   .todo-list{list-style:none;margin:0;padding:0;}
   .todo-item{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13px;
@@ -149,6 +150,7 @@
   .cal-ev{font-size:10px;line-height:1.25;border-radius:5px;padding:2px 4px;margin-bottom:3px;
     color:#fff;word-break:break-word;}
   .cal-ev.pri-high{background:#dc2626;} .cal-ev.pri-mid{background:#d97706;} .cal-ev.pri-low{background:#0891b2;}
+  .cal-ev.pri-meeting{background:#7c3aed;}
   .cal-ev.done{opacity:.5;text-decoration:line-through;}
   .cal-ev .cev-prop{display:block;font-size:9px;opacity:.85;}
   .show-chk{width:20px;height:20px;cursor:pointer;accent-color:var(--accent);}
@@ -284,9 +286,17 @@
           <option value="high">優先度：高</option>
           <option value="mid" selected>優先度：中</option>
           <option value="low">優先度：低</option>
+          <option value="meeting">集会</option>
         </select>
         <input type="date" id="todo-due" title="期限（任意）">
-        <input class="ti" id="todo-in" placeholder="やること内容を入力…" onkeydown="if(event.key==='Enter')addTodo()">
+        <input class="ti" id="todo-in" list="todo-presets" placeholder="やること内容を入力（選択も可）…" onkeydown="if(event.key==='Enter')addTodo()">
+        <datalist id="todo-presets">
+          <option value="理事会">
+          <option value="決算理事会">
+          <option value="定期総会">
+          <option value="臨時総会">
+          <option value="修繕委員会">
+        </datalist>
         <button class="btn btn-sm btn-primary" onclick="addTodo()">追加</button>
         <span class="spacer" style="flex:1"></span>
         <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
@@ -411,7 +421,7 @@ let curYear = +localStorage.getItem(YEARSEL) || new Date().getFullYear();
   if(tch) localStorage.setItem(TODOS, JSON.stringify(todos));
 })();
 
-const PRI={high:{label:'高',order:0},mid:{label:'中',order:1},low:{label:'低',order:2}};
+const PRI={high:{label:'高',order:0},mid:{label:'中',order:1},low:{label:'低',order:2},meeting:{label:'集会',order:3}};
 
 /* 選択中の年のチェック集合を取得（無ければ作る） */
 function yearChecks(){
@@ -605,17 +615,19 @@ function renderTodos(){
           <option value="high"${it.pri==='high'?' selected':''}>高</option>
           <option value="mid"${it.pri==='mid'?' selected':''}>中</option>
           <option value="low"${it.pri==='low'?' selected':''}>低</option>
+          <option value="meeting"${it.pri==='meeting'?' selected':''}>集会</option>
         </select>
         <input type="date" class="todo-due-edit" value="${esc(it.due||'')}" onchange="changeDue('${jsq(id)}',${j},this.value)">
         <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
       </li>`;
   let html='';
   // 優先度グループ（未完了のみ）
-  ['high','mid','low'].forEach(pk=>{
+  ['high','mid','low','meeting'].forEach(pk=>{
     const group=all.filter(x=>x.it.pri===pk && !x.it.done);
     const rows=group.length ? group.map(row).join('') : `<li class="todo-empty">なし</li>`;
+    const title=pk==='meeting'?'集会':'優先度 '+PRI[pk].label;
     html+=`<div class="pri-group pri-${pk}">
-      <h3 class="pri-head"><span class="pri-badge">優先度 ${PRI[pk].label}</span></h3>
+      <h3 class="pri-head"><span class="pri-badge">${title}</span></h3>
       <ul class="todo-list">${rows}</ul></div>`;
   });
   // 完了済グループ
