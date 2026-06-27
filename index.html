@@ -125,6 +125,26 @@
   .todo-txt{flex:1;cursor:pointer;word-break:break-word;}
   .pb{display:inline-block;font-size:10px;font-weight:700;color:#fff;border-radius:4px;padding:1px 6px;}
   .todo-empty{color:#94a3b8;font-size:13px;padding:8px 2px;}
+  .todo-pri-edit,.todo-due-edit{font-size:11px;padding:3px 5px;border:1px solid var(--line);
+    border-radius:6px;background:var(--panel);color:var(--ink);}
+  .todo-due-edit{max-width:140px;}
+  /* ===== カレンダー ===== */
+  .cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .cal-label{font-weight:700;font-size:16px;min-width:120px;text-align:center;}
+  .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+  .cal-dow .dow{text-align:center;font-size:12px;font-weight:700;color:var(--sub);padding:4px 0;}
+  .cal-dow .dow.sun{color:#dc2626;} .cal-dow .dow.sat{color:#2563eb;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-cell{min-height:84px;border:1px solid var(--line);border-radius:8px;padding:4px;
+    background:var(--panel);overflow:hidden;}
+  .cal-cell.empty{background:transparent;border:none;}
+  .cal-cell.today{border:2px solid var(--accent);background:var(--soft);}
+  .cal-d{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px;}
+  .cal-ev{font-size:10px;line-height:1.25;border-radius:5px;padding:2px 4px;margin-bottom:3px;
+    color:#fff;word-break:break-word;}
+  .cal-ev.pri-high{background:#dc2626;} .cal-ev.pri-mid{background:#d97706;} .cal-ev.pri-low{background:#0891b2;}
+  .cal-ev.done{opacity:.5;text-decoration:line-through;}
+  .cal-ev .cev-prop{display:block;font-size:9px;opacity:.85;}
   .rule-tbl td,.rule-tbl th{border:1px solid var(--line);padding:6px 10px;font-size:12px;}
   .rule-tbl th{background:var(--thbg);}
   .hint{font-size:12px;color:var(--sub);margin:-6px 0 14px;}
@@ -147,6 +167,11 @@
     .chk{min-height:34px;font-size:9px;} /* タップしやすく */
     .todo-addbar select,.todo-addbar input{font-size:16px;}
     .todo-addbar .ti{min-width:0;flex-basis:100%;}
+    .cal-grid{gap:2px;} .cal-dow{gap:2px;}
+    .cal-cell{min-height:62px;padding:2px;border-radius:6px;}
+    .cal-d{font-size:11px;margin-bottom:2px;}
+    .cal-ev{font-size:9px;padding:1px 3px;}
+    .cal-ev .cev-prop{font-size:8px;}
   }
 </style>
 </head>
@@ -159,6 +184,7 @@
   <button id="tab-input" class="active" onclick="show('input')">入力情報</button>
   <button id="tab-sched" onclick="show('sched')">タスク管理表</button>
   <button id="tab-todo" onclick="show('todo')">やることリスト</button>
+  <button id="tab-cal" onclick="show('cal')">カレンダー</button>
   <button id="tab-rule" onclick="show('rule')">タスク基準</button>
 </nav>
 
@@ -252,12 +278,32 @@
           <option value="mid" selected>優先度：中</option>
           <option value="low">優先度：低</option>
         </select>
+        <input type="date" id="todo-due" title="期限（任意）">
         <input class="ti" id="todo-in" placeholder="やること内容を入力…" onkeydown="if(event.key==='Enter')addTodo()">
         <button class="btn btn-sm btn-primary" onclick="addTodo()">追加</button>
         <span class="spacer" style="flex:1"></span>
         <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
       </div>
       <div id="todo-side"></div>
+    </div>
+  </section>
+
+  <!-- ============ カレンダーページ ============ -->
+  <section id="page-cal" style="display:none">
+    <div class="panel">
+      <h2>やること カレンダー</h2>
+      <p class="hint">やることリストで期限を設定した項目が、その日付に表示されます。</p>
+      <div class="cal-nav">
+        <button class="btn btn-sm btn-ghost" onclick="changeCalMonth(-1)">◀ 前月</button>
+        <span id="cal-label" class="cal-label"></span>
+        <button class="btn btn-sm btn-ghost" onclick="changeCalMonth(1)">翌月 ▶</button>
+        <button class="btn btn-sm btn-ghost" onclick="calToday()">今月</button>
+      </div>
+      <div class="cal-dow">
+        <div class="dow sun">日</div><div class="dow">月</div><div class="dow">火</div>
+        <div class="dow">水</div><div class="dow">木</div><div class="dow">金</div><div class="dow sat">土</div>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
     </div>
   </section>
 
@@ -283,6 +329,8 @@ const TASKS = [
     stages:['総会','総会報告中','総会完了']},
   {key:'rijikai',  base:'meeting', off:-1, rule:'総会の前月',        color:'#7c3aed',
     stages:['決算理事会','決算理事会完了']},
+  {key:'rijicho',  base:'meeting', off:-1, rule:'総会の前月（決算理事会と同時）', color:'#c026d3',
+    stages:['理事長アンケート','理事長アンケート完了']},
   {key:'kessan',   base:'settle',  off:0,  rule:'情報入力から反映',  color:'#0f766e',
     noCheck:true, label:'決算'},
   {key:'manryo',   base:'expire',  off:0,  rule:'情報入力から反映',  color:'#b91c1c',
@@ -538,6 +586,12 @@ function renderTodos(){
         <span class="todo-chk" onclick="toggleTodo('${jsq(id)}',${j})">${it.done?'✓':'○'}</span>
         <span class="todo-prop">${esc(propName(id))}</span>
         <span class="todo-txt" onclick="toggleTodo('${jsq(id)}',${j})">${esc(it.t)}</span>
+        <select class="todo-pri-edit" onchange="changePri('${jsq(id)}',${j},this.value)">
+          <option value="high"${it.pri==='high'?' selected':''}>高</option>
+          <option value="mid"${it.pri==='mid'?' selected':''}>中</option>
+          <option value="low"${it.pri==='low'?' selected':''}>低</option>
+        </select>
+        <input type="date" class="todo-due-edit" value="${esc(it.due||'')}" onchange="changeDue('${jsq(id)}',${j},this.value)">
         <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
       </li>`).join('') : `<li class="todo-empty">なし</li>`;
     html+=`<div class="pri-group pri-${pk}">
@@ -549,21 +603,68 @@ function renderTodos(){
 function addTodo(){
   const id=document.getElementById('todo-prop').value;
   const pri=document.getElementById('todo-pri').value;
+  const dueEl=document.getElementById('todo-due'), due=dueEl.value;
   const inp=document.getElementById('todo-in'), v=inp.value.trim();
   if(!id){ alert('物件を選択してください'); return; }
   if(!v) return;
-  todos[id]=todos[id]||[]; todos[id].push({t:v,done:false,pri});
-  persistTodos(); inp.value=''; renderTodos(); inp.focus();
+  todos[id]=todos[id]||[]; todos[id].push({t:v,done:false,pri,due});
+  persistTodos(); inp.value=''; dueEl.value=''; renderTodos(); renderCal(); inp.focus();
 }
 function toggleTodo(id,j){
   if(!todos[id]||!todos[id][j]) return;
-  todos[id][j].done=!todos[id][j].done; persistTodos(); renderTodos();
+  todos[id][j].done=!todos[id][j].done; persistTodos(); renderTodos(); renderCal();
+}
+function changePri(id,j,v){
+  if(!todos[id]||!todos[id][j]) return;
+  todos[id][j].pri=v; persistTodos(); renderTodos(); renderCal();
+}
+function changeDue(id,j,v){
+  if(!todos[id]||!todos[id][j]) return;
+  todos[id][j].due=v; persistTodos(); renderCal();
 }
 function delTodo(id,j){
   if(!todos[id]) return;
   todos[id].splice(j,1);
   if(!todos[id].length) delete todos[id];
-  persistTodos(); renderTodos();
+  persistTodos(); renderTodos(); renderCal();
+}
+
+/* ===== やること カレンダー ===== */
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth()+1;
+function changeCalMonth(d){
+  calMonth+=d;
+  if(calMonth<1){ calMonth=12; calYear--; }
+  if(calMonth>12){ calMonth=1; calYear++; }
+  renderCal();
+}
+function calToday(){
+  const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth()+1; renderCal();
+}
+function todosByDate(){
+  const map={};
+  for(const id in todos) (todos[id]||[]).forEach((it,j)=>{
+    if(it.due){ (map[it.due]=map[it.due]||[]).push({id,j,it}); }
+  });
+  return map;
+}
+function renderCal(){
+  const grid=document.getElementById('cal-grid'); if(!grid) return;
+  const lbl=document.getElementById('cal-label'); if(lbl) lbl.textContent=calYear+'年 '+calMonth+'月';
+  const startDow=new Date(calYear,calMonth-1,1).getDay();
+  const days=new Date(calYear,calMonth,0).getDate();
+  const map=todosByDate();
+  const n=new Date();
+  const todayStr=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+  let cells='';
+  for(let i=0;i<startDow;i++) cells+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=days;d++){
+    const ds=`${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items=(map[ds]||[]).slice().sort((a,b)=>(PRI[a.it.pri].order-PRI[b.it.pri].order));
+    const ev=items.map(({id,it})=>
+      `<div class="cal-ev pri-${it.pri} ${it.done?'done':''}">${esc(it.t)}<span class="cev-prop">${esc(propName(id))}</span></div>`).join('');
+    cells+=`<div class="cal-cell ${ds===todayStr?'today':''}"><div class="cal-d">${d}</div>${ev}</div>`;
+  }
+  grid.innerHTML=cells;
 }
 
 /* ===== 編集（並び替え）モード & ダークモード ===== */
@@ -601,12 +702,13 @@ function renderRules(){
 
 /* ===== タブ ===== */
 function show(p){
-  ['input','sched','todo','rule'].forEach(x=>{
+  ['input','sched','todo','cal','rule'].forEach(x=>{
     document.getElementById('page-'+x).style.display = x===p?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active', x===p);
   });
   if(p==='sched') renderSched();
   if(p==='todo') renderTodos();
+  if(p==='cal') renderCal();
 }
 
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -618,7 +720,7 @@ function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
   document.getElementById('year-label').textContent=curYear+'年';
   if(localStorage.getItem(DARK)==='1'){ document.body.classList.add('dark');
     ['btn-dark','btn-dark2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀ ライト';}); }
-  fillMonthSelects(); fillCodeList(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos();
+  fillMonthSelects(); fillCodeList(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos(); renderCal();
 })();
 </script>
 </body>
