@@ -141,6 +141,11 @@
   .cal-cell.empty{background:transparent;border:none;}
   .cal-cell.today{border:2px solid var(--accent);background:var(--soft);}
   .cal-d{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px;}
+  .cal-d.sun,.cal-d.hol{color:#dc2626;} .cal-d.sat{color:#2563eb;}
+  .cal-cell.is-hol{background:#fef2f2;border-color:#fecaca;}
+  body.dark .cal-cell.is-hol{background:#3b1d1d;border-color:#7f1d1d;}
+  .cal-hol{display:block;font-size:9px;font-weight:700;color:#dc2626;line-height:1.2;margin-bottom:3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cal-ev{font-size:10px;line-height:1.25;border-radius:5px;padding:2px 4px;margin-bottom:3px;
     color:#fff;word-break:break-word;}
   .cal-ev.pri-high{background:#dc2626;} .cal-ev.pri-mid{background:#d97706;} .cal-ev.pri-low{background:#0891b2;}
@@ -651,6 +656,32 @@ function delTodo(id,j){
   persistTodos(); renderTodos(); renderCal();
 }
 
+/* ===== 日本の祝日（内閣府公表ベース：振替休日・国民の休日含む） ===== */
+const HOLIDAYS={
+  // 2025
+  '2025-01-01':'元日','2025-01-13':'成人の日','2025-02-11':'建国記念の日',
+  '2025-02-23':'天皇誕生日','2025-02-24':'振替休日','2025-03-20':'春分の日',
+  '2025-04-29':'昭和の日','2025-05-03':'憲法記念日','2025-05-04':'みどりの日',
+  '2025-05-05':'こどもの日','2025-05-06':'振替休日','2025-07-21':'海の日',
+  '2025-08-11':'山の日','2025-09-15':'敬老の日','2025-09-23':'秋分の日',
+  '2025-10-13':'スポーツの日','2025-11-03':'文化の日','2025-11-23':'勤労感謝の日',
+  '2025-11-24':'振替休日',
+  // 2026
+  '2026-01-01':'元日','2026-01-12':'成人の日','2026-02-11':'建国記念の日',
+  '2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日',
+  '2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日',
+  '2026-05-06':'振替休日','2026-07-20':'海の日','2026-08-11':'山の日',
+  '2026-09-21':'敬老の日','2026-09-22':'国民の休日','2026-09-23':'秋分の日',
+  '2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日',
+  // 2027
+  '2027-01-01':'元日','2027-01-11':'成人の日','2027-02-11':'建国記念の日',
+  '2027-02-23':'天皇誕生日','2027-03-21':'春分の日','2027-03-22':'振替休日',
+  '2027-04-29':'昭和の日','2027-05-03':'憲法記念日','2027-05-04':'みどりの日',
+  '2027-05-05':'こどもの日','2027-07-19':'海の日','2027-08-11':'山の日',
+  '2027-09-20':'敬老の日','2027-09-23':'秋分の日','2027-10-11':'スポーツの日',
+  '2027-11-03':'文化の日','2027-11-23':'勤労感謝の日',
+};
+
 /* ===== やること カレンダー ===== */
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth()+1;
 function changeCalMonth(d){
@@ -681,10 +712,14 @@ function renderCal(){
   for(let i=0;i<startDow;i++) cells+='<div class="cal-cell empty"></div>';
   for(let d=1;d<=days;d++){
     const ds=`${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=new Date(calYear,calMonth-1,d).getDay();
+    const hol=HOLIDAYS[ds];
+    const dcls=hol?'hol':(dow===0?'sun':dow===6?'sat':'');
+    const holLbl=hol?`<span class="cal-hol">${esc(hol)}</span>`:'';
     const items=(map[ds]||[]).slice().sort((a,b)=>(PRI[a.it.pri].order-PRI[b.it.pri].order));
     const ev=items.map(({id,it})=>
       `<div class="cal-ev pri-${it.pri} ${it.done?'done':''}">${esc(it.t)}<span class="cev-prop">${esc(propName(id))}</span></div>`).join('');
-    cells+=`<div class="cal-cell ${ds===todayStr?'today':''}"><div class="cal-d">${d}</div>${ev}</div>`;
+    cells+=`<div class="cal-cell ${ds===todayStr?'today':''} ${hol?'is-hol':''}"><div class="cal-d ${dcls}">${d}</div>${holLbl}${ev}</div>`;
   }
   grid.innerHTML=cells;
 }
