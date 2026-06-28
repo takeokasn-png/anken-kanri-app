@@ -117,14 +117,16 @@
   .pri-meeting .pri-badge,.pb-meeting{background:#7c3aed;}
   .pri-done .pri-badge,.pb-done{background:#64748b;}
   .todo-list{list-style:none;margin:0;padding:0;}
-  .todo-item{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13px;
+  .todo-item{display:flex;flex-direction:column;gap:5px;padding:9px 10px;font-size:13px;
     border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel);}
+  .todo-line1{display:flex;align-items:center;gap:9px;}
   .todo-item.done{opacity:.6;}
   .todo-item.done .todo-txt{text-decoration:line-through;color:#94a3b8;}
-  .todo-chk{cursor:pointer;font-weight:700;color:var(--accent);width:18px;text-align:center;font-size:15px;}
+  .todo-chk{cursor:pointer;font-weight:700;color:var(--accent);width:18px;text-align:center;font-size:15px;flex:none;}
   .todo-prop{font-size:11px;color:var(--sub);background:var(--soft);border-radius:5px;
-    padding:2px 7px;white-space:nowrap;}
-  .todo-txt{flex:1;cursor:pointer;word-break:break-word;}
+    padding:2px 7px;white-space:nowrap;flex:none;}
+  .todo-line1 .todo-due-edit{margin-left:auto;}
+  .todo-txt{cursor:pointer;word-break:break-word;padding-left:27px;}
   .pb{display:inline-block;font-size:10px;font-weight:700;color:#fff;border-radius:4px;padding:1px 6px;}
   .todo-empty{color:#94a3b8;font-size:13px;padding:8px 2px;}
   .todo-pri-edit,.todo-due-edit{font-size:11px;padding:3px 5px;border:1px solid var(--line);
@@ -305,8 +307,6 @@
           <option value="修繕委員会">修繕委員会</option>
         </select>
         <button class="btn btn-sm btn-primary" onclick="addTodo()">追加</button>
-        <span class="spacer" style="flex:1"></span>
-        <button class="btn btn-sm btn-ghost" id="btn-dark2" onclick="toggleDark()">🌙 ダーク</button>
       </div>
       <div id="todo-side"></div>
     </div>
@@ -913,17 +913,19 @@ function renderTodos(){
   for(const id in todos){ (todos[id]||[]).forEach((it,j)=>all.push({id,j,it})); }
   const row=({id,j,it})=>`
       <li class="todo-item ${it.done?'done':''}">
-        <span class="todo-chk" onclick="toggleTodo('${jsq(id)}',${j})">${it.done?'✓':'○'}</span>
-        <span class="todo-prop">${esc(propName(id))}</span>
-        <span class="todo-txt" onclick="toggleTodo('${jsq(id)}',${j})">${esc(it.t)}</span>
-        <select class="todo-pri-edit" onchange="changePri('${jsq(id)}',${j},this.value)">
-          <option value="high"${it.pri==='high'?' selected':''}>高</option>
-          <option value="mid"${it.pri==='mid'?' selected':''}>中</option>
-          <option value="low"${it.pri==='low'?' selected':''}>低</option>
-          <option value="meeting"${it.pri==='meeting'?' selected':''}>集会</option>
-        </select>
-        <input type="date" class="todo-due-edit" value="${esc(it.due||'')}" onchange="changeDue('${jsq(id)}',${j},this.value)">
-        <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
+        <div class="todo-line1">
+          <span class="todo-chk" onclick="toggleTodo('${jsq(id)}',${j})">${it.done?'✓':'○'}</span>
+          <span class="todo-prop">${esc(propName(id))}</span>
+          <select class="todo-pri-edit" onchange="changePri('${jsq(id)}',${j},this.value)">
+            <option value="high"${it.pri==='high'?' selected':''}>高</option>
+            <option value="mid"${it.pri==='mid'?' selected':''}>中</option>
+            <option value="low"${it.pri==='low'?' selected':''}>低</option>
+            <option value="meeting"${it.pri==='meeting'?' selected':''}>集会</option>
+          </select>
+          <input type="date" class="todo-due-edit" value="${esc(it.due||'')}" onchange="changeDue('${jsq(id)}',${j},this.value)">
+          <button class="mini del" onclick="delTodo('${jsq(id)}',${j})">×</button>
+        </div>
+        <div class="todo-txt" onclick="toggleTodo('${jsq(id)}',${j})">${esc(it.t)}</div>
       </li>`;
   let html='';
   // 優先度グループ（未完了のみ）
@@ -1063,9 +1065,7 @@ function toggleEdit(){
 function toggleDark(){
   const on=document.body.classList.toggle('dark');
   localStorage.setItem(DARK,on?'1':'0');
-  ['btn-dark','btn-dark2'].forEach(id=>{
-    const b=document.getElementById(id); if(b) b.textContent=on?'☀ ライト':'🌙 ダーク';
-  });
+  const b=document.getElementById('btn-dark'); if(b) b.textContent=on?'☀ ライト':'🌙 ダーク';
 }
 
 /* ===== 凡例・基準表 ===== */
@@ -1102,7 +1102,7 @@ function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
   document.getElementById('today').textContent='本日：'+new Date().toLocaleDateString('ja-JP');
   document.getElementById('year-label').textContent=curYear+'年';
   if(localStorage.getItem(DARK)==='1'){ document.body.classList.add('dark');
-    ['btn-dark','btn-dark2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀ ライト';}); }
+    const b=document.getElementById('btn-dark'); if(b)b.textContent='☀ ライト'; }
   fillMonthSelects(); fillCodeList(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos(); renderCal();
 })();
 </script>
