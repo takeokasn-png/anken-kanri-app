@@ -359,6 +359,10 @@
 const TASKS = [
   {key:'soukai',   base:'meeting', off:0,  rule:'情報入力から反映',  color:'#2563eb',
     stages:['総会','総会報告中','総会完了']},
+  {key:'soukaishiryo', base:'meeting', off:0, rule:'総会と同月',     color:'#0284c7',
+    stages:['総会資料','総会資料印刷依頼','総会資料配布完了']},
+  {key:'jusetsu',  base:'meeting', off:0,  rule:'総会と同月',        color:'#059669',
+    stages:['重説資料','重説資料印刷依頼','重説資料配布完了']},
   {key:'rijikai',  base:'meeting', off:-1, rule:'総会の前月',        color:'#7c3aed',
     stages:['決算理事会','決算理事会完了']},
   {key:'rijicho',  base:'meeting', off:-1, rule:'総会の前月（決算理事会と同時）', color:'#c026d3',
