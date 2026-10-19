@@ -82,6 +82,27 @@
   .chk.done .nm{text-decoration:line-through;opacity:.95;}
   .chk.done .mk{opacity:1;}
   .chk.nocheck{cursor:default;}
+  /* 内側チェックリストのモーダル */
+  .modal{display:none;position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.55);
+    align-items:flex-end;justify-content:center;padding:0;}
+  .modal-panel{background:var(--panel);width:100%;max-width:520px;border-radius:14px 14px 0 0;
+    max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.25);}
+  .modal-head{padding:14px 16px 10px;border-bottom:1px solid var(--line);}
+  .modal-head h3{margin:0;font-size:15px;color:var(--ink);}
+  .modal-head .mmeta{font-size:12px;color:var(--sub);margin-top:3px;font-weight:700;}
+  .modal-body{overflow-y:auto;padding:8px 12px 4px;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;}
+  .modal-foot{padding:10px 16px 16px;border-top:1px solid var(--line);}
+  .sub-row{display:flex;align-items:center;gap:10px;padding:11px 10px;margin:5px 0;
+    border:1px solid var(--line);border-radius:9px;cursor:pointer;user-select:none;
+    background:var(--bg);transition:all .12s;}
+  .sub-row.on{background:#2563eb14;border-color:#2563eb66;}
+  .sub-box{flex:0 0 24px;height:24px;border:2px solid var(--line);border-radius:6px;
+    display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;
+    color:#fff;background:var(--panel);}
+  .sub-row.on .sub-box{background:#2563eb;border-color:#2563eb;}
+  .sub-txt{font-size:13px;line-height:1.3;color:var(--ink);}
+  .sub-note{display:block;font-size:11px;color:#b91c1c;font-weight:700;margin-top:2px;}
   .reorder{display:flex;gap:3px;margin-top:4px;}
   .mini{border:1px solid var(--line);background:var(--panel);color:var(--sub);
     border-radius:5px;font-size:11px;line-height:1;padding:2px 5px;cursor:pointer;font-weight:700;}
@@ -270,7 +291,7 @@
   <section id="page-sched" style="display:none">
     <div class="panel">
       <h2>タスク管理表（12ヶ月）</h2>
-      <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：総会→総会報告→総会完了→未着手に戻る）。進捗は西暦年ごとに記録されます。</p>
+      <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：委託契約書→契約書変更申請中→…→完了→未着手に戻る）。<b>総会はタップすると9項目のチェックリストが開き、全部チェックで総会完了になります。</b>進捗は西暦年ごとに記録されます。</p>
       <div class="sched-bar">
         <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
         <button class="btn btn-sm btn-ghost" id="btn-dark" onclick="toggleDark()">🌙 ダーク</button>
@@ -360,6 +381,20 @@
   </section>
 </div>
 
+<!-- 総会など内側チェックリストのモーダル -->
+<div class="modal" id="sub-modal" onclick="if(event.target===this)closeSub()">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h3 id="sub-title"></h3>
+      <div class="mmeta" id="sub-meta"></div>
+    </div>
+    <div class="modal-body"><div id="sub-list"></div></div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" style="width:100%" onclick="closeSub()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ===== タスク定義 =====
    base: 'settle'=決算月, 'meeting'=総会月, 'expire'=契約満了月
@@ -377,9 +412,22 @@ function kaigiOff(year, settleMonth){
   return year >= 2027 ? -6 : -3;
 }
 
+/* 総会タップで開く内側チェックリスト（9項目すべてで総会完了） */
+const SOUKAI_ITEMS = [
+  {t:'総会報告'},
+  {t:'通帳預かり書'},
+  {t:'包括支持者', note:'FS導入済み不要'},
+  {t:'銀行代表者名変更', note:'代表者名省略済み不要'},
+  {t:'すまいる債名義変更'},
+  {t:'防火管理者変更'},
+  {t:'アウル理事長名変更'},
+  {t:'素敵ネット理事長名変更'},
+  {t:'FS理事長交代'},
+];
+
 const TASKS = [
-  {key:'soukai',   base:'meeting', off:0,  rule:'情報入力から反映',  color:'#2563eb',
-    stages:['総会','総会報告中','総会完了']},
+  {key:'soukai',   base:'meeting', off:0,  rule:'情報入力から反映（タップで9項目のチェックリスト）', color:'#2563eb',
+    stages:['総会','総会完了'], sub:SOUKAI_ITEMS},
   {key:'soukaishiryo', base:'meeting', off:0, rule:'総会と同月',     color:'#0284c7',
     stages:['総会資料','総会資料印刷依頼','総会資料配布完了']},
   {key:'jusetsu',  base:'meeting', off:0,  rule:'総会と同月',        color:'#059669',
@@ -465,7 +513,8 @@ let curYear = +localStorage.getItem(YEARSEL) || new Date().getFullYear();
   for(const a in checks) for(const b in checks[a]){
     const lvl=checks[a][b];
     if(lvl===true){ const t=TASKS.find(x=>x.key===b);
-      checks[a][b]= t&&t.stages ? t.stages.length-1 : 1; }
+      // 総会は旧3段階の「完了」=2 にして、下の (b2) で9項目すべてチェック済みへ移行させる
+      checks[a][b]= t&&t.sub ? 2 : t&&t.stages ? t.stages.length-1 : 1; }
   }
   // (b) 年スコープ化：旧フラット形式 { id:{key:idx} } を当年配下へ移動
   const top=Object.keys(checks);
@@ -473,6 +522,15 @@ let curYear = +localStorage.getItem(YEARSEL) || new Date().getFullYear();
   if(isFlat){
     const moved={}; const y=String(new Date().getFullYear());
     moved[y]=checks; checks=moved;
+  }
+  // (b2) 旧3段階の総会（総会→総会報告中→総会完了）を内側9項目へ移行
+  for(const y in checks) for(const id in checks[y]){
+    const rec=checks[y][id]; if(!rec || typeof rec!=='object') continue;
+    if('soukai' in rec){
+      if(rec.soukai>=2) rec[subKey('soukai')]=SOUKAI_ITEMS.map(()=>true);
+      else if(rec.soukai===1) rec[subKey('soukai')]=SOUKAI_ITEMS.map((_,i)=>i===0);
+      delete rec.soukai;
+    }
   }
   localStorage.setItem(CHECKS, JSON.stringify(checks));
   // (c) 優先度未設定のやることは「中」に
@@ -496,9 +554,59 @@ function persist(){ localStorage.setItem(STORE, JSON.stringify(props)); }
 function persistChecks(){ localStorage.setItem(CHECKS, JSON.stringify(checks)); }
 function persistTodos(){ localStorage.setItem(TODOS, JSON.stringify(todos)); }
 
+/* ===== 内側チェックリスト（総会など sub を持つタスク） ===== */
+function subKey(key){ return key+'_sub'; }
+/* 進捗状況を集計：{arr, done, n, all} */
+function subState(cdone, t){
+  const arr=(cdone&&cdone[subKey(t.key)])||[];
+  const n=t.sub.length;
+  let done=0; for(let i=0;i<n;i++) if(arr[i]) done++;
+  return {arr, done, n, all:done===n};
+}
+let subCtx=null; // 開いているモーダルの対象 {id,key}
+function openSub(id, key){
+  const t=TASKS.find(x=>x.key===key); if(!t||!t.sub) return;
+  subCtx={id, key};
+  document.getElementById('sub-modal').style.display='flex';
+  renderSub();
+}
+function closeSub(){
+  document.getElementById('sub-modal').style.display='none';
+  subCtx=null; renderSched();
+}
+function toggleSub(i){
+  if(!subCtx) return;
+  const t=TASKS.find(x=>x.key===subCtx.key);
+  const yc=yearChecks();
+  yc[subCtx.id]=yc[subCtx.id]||{};
+  const k=subKey(subCtx.key);
+  const arr=(yc[subCtx.id][k]||[]).slice();
+  while(arr.length<t.sub.length) arr.push(false);
+  arr[i]=!arr[i];
+  if(arr.some(Boolean)) yc[subCtx.id][k]=arr; else delete yc[subCtx.id][k];
+  if(!Object.keys(yc[subCtx.id]).length) delete yc[subCtx.id];
+  persistChecks(); renderSub();
+}
+function renderSub(){
+  if(!subCtx) return;
+  const t=TASKS.find(x=>x.key===subCtx.key);
+  const st=subState(yearChecks()[subCtx.id]||{}, t);
+  document.getElementById('sub-title').textContent=propName(subCtx.id);
+  document.getElementById('sub-meta').textContent=
+    curYear+'年 ／ '+taskName(t)+' '+st.done+'/'+st.n+(st.all?'（完了）':'');
+  document.getElementById('sub-list').innerHTML=t.sub.map((it,i)=>{
+    const on=!!st.arr[i];
+    return `<div class="sub-row${on?' on':''}" onclick="toggleSub(${i})">
+      <span class="sub-box">${on?'✓':''}</span>
+      <span class="sub-txt"><b>${i+1}. ${esc(it.t)}</b>${
+        it.note?`<span class="sub-note">※${esc(it.note)}</span>`:''}</span></div>`;
+  }).join('');
+}
+
 /* ===== 段階チェック（選択中の年スコープ） ===== */
 function cycleStage(id, key){
   const t=TASKS.find(x=>x.key===key); if(!t||t.noCheck) return;
+  if(t.sub){ openSub(id,key); return; }
   const yc=yearChecks();
   let idx=(yc[id]&&yc[id][key])||0;
   idx=(idx+1)%t.stages.length;
@@ -627,6 +735,16 @@ function renderSched(){
     const tds=cells.map(list=>`<td class="mcell">${list.map(t=>{
       if(t.noCheck){
         return `<div class="chk nocheck" style="background:${t.color};color:#fff;border:1px solid ${t.color}"><span class="nm">${t.label}</span></div>`;
+      }
+      if(t.sub){
+        const st=subState(cdone,t);
+        const label=st.all?t.stages[t.stages.length-1]:t.stages[0];
+        let cls,style,mark;
+        if(st.done===0){ cls=''; style=`background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`; mark='□'; }
+        else if(st.all){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; mark='✓'; }
+        else { cls='prog'; style=`background:${hex2mid(t.color)};color:${t.color};border:1px solid ${t.color}`; mark=st.done+'/'+st.n; }
+        return `<div class="chk ${cls}" style="${style}" onclick="openSub('${jsq(id)}','${t.key}')">`+
+          `<span class="nm">${label}</span><span class="mk">${mark}</span></div>`;
       }
       const idx=cdone[t.key]||0, last=t.stages.length-1, label=t.stages[Math.min(idx,last)];
       let cls,style,mark;
@@ -832,7 +950,9 @@ function renderLegend(){
 }
 function renderRules(){
   document.getElementById('rule-body').innerHTML=TASKS.map((t,i)=>{
-    const flow=t.noCheck?'（チェックなし・表記のみ）':t.stages.join(' → ');
+    const flow=t.noCheck?'（チェックなし・表記のみ）'
+      :t.sub?'タップで内側チェックリスト：'+t.sub.map((s,n)=>(n+1)+'.'+s.t).join('／')+' → 全てチェックで'+t.stages[t.stages.length-1]
+      :t.stages.join(' → ');
     return `<tr><td>${i+1}</td>
       <td><span class="chk" style="display:inline-flex;background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)};min-height:auto;padding:2px 8px">${taskName(t)}</span>
       <div style="font-size:11px;color:var(--sub);margin-top:3px">${flow}</div></td>
