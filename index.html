@@ -70,6 +70,15 @@
     min-width:112px;max-width:132px;font-weight:600;padding:6px 8px;}
   .sched thead .pcol{background:#0f172a;z-index:3;}
   .sched td.mcell{padding:2px;height:1px;}
+  /* 月の列の表示・非表示ボタン行（1行目）と月名の行（2行目）を上部に固定 */
+  .sched thead tr.vis-row th{height:30px;padding:3px 2px;background:#334155;}
+  .sched thead tr#sched-head th{top:30px;}
+  .vis-btn{font-size:10px;font-weight:700;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:#fff;border-radius:6px;padding:3px 4px;cursor:pointer;white-space:nowrap;line-height:1.1;}
+  .vis-btn.off{background:#f59e0b;border-color:#f59e0b;color:#1e293b;}
+  .vis-btn.vis-all{background:#f59e0b;border-color:#f59e0b;color:#1e293b;}
+  .vis-cap{font-size:10px;font-weight:600;opacity:.75;}
+  .sched th.mhead.mhide,.sched td.mcell.mhide{width:38px;min-width:38px;max-width:38px;background:repeating-linear-gradient(45deg,rgba(127,127,127,.08),rgba(127,127,127,.08) 4px,transparent 4px,transparent 8px);}
+  .sched thead th.mhead.mhide{background:#475569;}
   /* チェックする小さいマス（段階式） */
   .chk{display:flex;flex-direction:column;align-items:center;justify-content:center;
     text-align:center;border-radius:5px;padding:3px 2px;margin:2px 0;font-size:10px;
@@ -303,12 +312,12 @@
   <section id="page-sched" style="display:none">
     <div class="panel">
       <h2>タスク管理表（12ヶ月）</h2>
-      <p class="hint">各マスをタップするたびに進捗が段階的に進みます（例：委託契約書→契約書変更申請中→…→完了→未着手に戻る）。<b>総会はタップすると9項目のチェックリストが開き、全部チェックで総会完了になります。</b>進捗は西暦年ごとに記録されます。</p>
       <div class="sched-bar">
         <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
         <button class="btn btn-sm btn-ghost" id="btn-dark" onclick="toggleDark()">🌙 ダーク</button>
         <span class="spacer"></span>
         <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
+        <button class="btn btn-sm btn-primary" onclick="selectAllChecks()">チェック全選択</button>
       </div>
       <div class="legend" id="legend"></div>
       <div class="year-nav">
@@ -319,10 +328,12 @@
       </div>
       <div class="sched-scroll">
         <table class="sched">
-          <thead><tr id="sched-head"></tr></thead>
+          <thead><tr id="sched-vis" class="vis-row"></tr><tr id="sched-head"></tr></thead>
           <tbody id="sched-body"></tbody>
         </table>
       </div>
+      <p class="hint" style="margin-top:10px">各マスをタップするたびに進捗が段階的に進みます（例：委託契約書→契約書変更申請中→…→完了→未着手に戻る）。<b>総会はタップすると9項目のチェックリストが開き、全部チェックで総会完了になります。</b>進捗は西暦年ごとに記録されます。</p>
+
     </div>
   </section>
 
@@ -637,6 +648,32 @@ function resetChecks(){
   delete checks[String(curYear)]; persistChecks(); renderSched();
 }
 
+function selectAllChecks(){
+  if(!confirm(curYear+'年の表示中マンションの進捗をすべて「完了」にします。よろしいですか？')) return;
+  const yc=yearChecks();
+  props.forEach(p=>{
+    if(p.show===false) return;
+    const id=pid(p);
+    TASKS.forEach(t=>{
+      if(t.noCheck || !baseMonth(p,t.base)) return;
+      yc[id]=yc[id]||{};
+      if(t.sub) yc[id][subKey(t.key)]=t.sub.map(()=>true);
+      else if(t.stages) yc[id][t.key]=t.stages.length-1;
+    });
+  });
+  persistChecks(); renderSched();
+}
+
+/* ===== 月の列の表示・非表示 ===== */
+const HIDECOLS='kanken_hidecols_v1';
+let hiddenMonths=[];
+try{ hiddenMonths=JSON.parse(localStorage.getItem(HIDECOLS)||'[]'); }catch(e){ hiddenMonths=[]; }
+function toggleMonthCol(m){
+  hiddenMonths = hiddenMonths.includes(m) ? hiddenMonths.filter(x=>x!==m) : hiddenMonths.concat(m);
+  localStorage.setItem(HIDECOLS, JSON.stringify(hiddenMonths)); renderSched();
+}
+function showAllMonthCols(){ hiddenMonths=[]; localStorage.setItem(HIDECOLS,'[]'); renderSched(); }
+
 /* ===== 月計算 ===== */
 function shift(m,off){ return ((m-1+off)%12+12)%12+1; }
 /* off は数値、または (年, 物件) を受け取る関数（年度で規定が変わるタスク用） */
@@ -721,8 +758,12 @@ function renderList(){
 /* ===== スケジュール描画 ===== */
 function renderSched(){
   const head=document.getElementById('sched-head');
+  const isHid=m=>hiddenMonths.includes(m);
+  document.getElementById('sched-vis').innerHTML='<th class="nocol"></th><th class="pcol">'+
+    (hiddenMonths.length?'<button class="vis-btn vis-all" onclick="showAllMonthCols()">全て表示</button>':'<span class="vis-cap">列の表示</span>')+'</th>'+
+    Array.from({length:12},(_,i)=>`<th class="mhead${isHid(i+1)?' mhide':''}"><button class="vis-btn${isHid(i+1)?' off':''}" onclick="toggleMonthCol(${i+1})">${isHid(i+1)?'表示':'非表示'}</button></th>`).join('');
   head.innerHTML='<th class="nocol">No</th><th class="pcol">マンション</th>'+
-    Array.from({length:12},(_,i)=>`<th class="mhead">${i+1}月</th>`).join('');
+    Array.from({length:12},(_,i)=>`<th class="mhead${isHid(i+1)?' mhide':''}">${i+1}月</th>`).join('');
   const shown=props.filter(p=>p.show!==false);
   const tot=document.getElementById('sched-totals');
   if(tot){
@@ -744,7 +785,7 @@ function renderSched(){
       const bm=baseMonth(p,t.base); if(!bm) return;
       cells[shift(bm,taskOff(t,curYear,p))-1].push(t);
     });
-    const tds=cells.map(list=>`<td class="mcell">${list.map(t=>{
+    const tds=cells.map((list,mi)=>hiddenMonths.includes(mi+1)?'<td class="mcell mhide"></td>':`<td class="mcell">${list.map(t=>{
       if(t.noCheck){
         return `<div class="chk nocheck" style="background:${t.color};color:#fff;border:1px solid ${t.color}"><span class="nm">${t.label}</span></div>`;
       }
@@ -994,6 +1035,7 @@ function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
     const b=document.getElementById('btn-dark'); if(b)b.textContent='☀ ライト'; }
   loadMasterFromStorage(); updateMasterStatus();
   fillMonthSelects(); fillCodeList(); renderList(); renderLegend(); renderRules(); renderSched(); renderTodos(); renderCal();
+  show('sched'); // 起動時はタスク管理表を開く
 })();
 </script>
 </body>
