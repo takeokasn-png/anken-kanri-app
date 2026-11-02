@@ -87,7 +87,8 @@
   .chk .nm{display:block;}
   .chk .mk{display:block;font-size:10px;margin-top:1px;opacity:.5;}
   .chk.prog .mk{opacity:1;}
-  .chk.done .mk{opacity:1;font-weight:700;white-space:nowrap;}
+  .chk.done .mk{white-space:nowrap;}
+  .chk .mk .dt{font-size:8px;font-weight:300;margin-left:2px;letter-spacing:-.2px;}
   .chk.done{color:#fff !important;}
   .chk.done .nm{text-decoration:line-through;opacity:.95;}
   .chk.done .mk{opacity:1;}
@@ -835,7 +836,7 @@ function renderSched(){
         const label=st.all?t.stages[t.stages.length-1]:t.stages[0];
         let cls,style,mark;
         if(st.done===0){ cls=''; style=`background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`; mark='□'; }
-        else if(st.all){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; const dt=doneDateLabel(id,t.key); mark=dt?'☑️'+dt:'✓'; }
+        else if(st.all){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; const dt=doneDateLabel(id,t.key); mark=dt?'✓<span class="dt">'+dt+'</span>':'✓'; }
         else { cls='prog'; style=`background:${hex2mid(t.color)};color:${t.color};border:1px solid ${t.color}`; mark=st.done+'/'+st.n; }
         return `<div class="chk ${cls}" style="${style}" onclick="openSub('${jsq(id)}','${t.key}')">`+
           `<span class="nm">${label}</span><span class="mk">${mark}</span></div>`;
@@ -843,7 +844,7 @@ function renderSched(){
       const idx=cdone[t.key]||0, last=t.stages.length-1, label=t.stages[Math.min(idx,last)];
       let cls,style,mark;
       if(idx===0){ cls=''; style=`background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`; mark='□'; }
-      else if(idx>=last){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; const dt=doneDateLabel(id,t.key); mark=dt?'☑️'+dt:'✓'; }
+      else if(idx>=last){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; const dt=doneDateLabel(id,t.key); mark=dt?'✓<span class="dt">'+dt+'</span>':'✓'; }
       else { cls='prog'; style=`background:${hex2mid(t.color)};color:${t.color};border:1px solid ${t.color}`; mark='●'+idx; }
       return `<div class="chk ${cls}" style="${style}" onclick="cycleStage('${jsq(id)}','${t.key}')">`+
         `<span class="nm">${label}</span><span class="mk">${mark}</span></div>`;
