@@ -87,6 +87,7 @@
   .chk .nm{display:block;}
   .chk .mk{display:block;font-size:10px;margin-top:1px;opacity:.5;}
   .chk.prog .mk{opacity:1;}
+  .chk.done .mk{opacity:1;font-weight:700;white-space:nowrap;}
   .chk.done{color:#fff !important;}
   .chk.done .nm{text-decoration:line-through;opacity:.95;}
   .chk.done .mk{opacity:1;}
@@ -122,7 +123,8 @@
   .legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:14px;}
   .legend span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);}
   .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
-  .sched-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
+  .sched-bar{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;margin-bottom:14px;}
+  .sched-bar .btn{white-space:nowrap;flex-shrink:0;}
   .sched-bar .spacer{flex:1;}
   .year-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .totals{margin-left:auto;font-size:13px;font-weight:600;color:var(--sub);}
@@ -221,6 +223,8 @@
     .form-grid{grid-template-columns:1fr;gap:11px;}
     .field input,.field select{font-size:16px;padding:11px;} /* iOSズーム防止 */
     .btn{padding:11px 18px;}
+    .sched-bar{gap:6px;}
+    .sched-bar .btn{padding:8px 9px;font-size:12px;}
     .list-tbl th,.list-tbl td{padding:6px 4px;font-size:12px;}
     .sched th.mhead{width:48px;min-width:48px;}
     .sched .pcol{min-width:90px;max-width:100px;padding:5px 6px;}
@@ -316,10 +320,9 @@
         <button class="btn btn-sm btn-ghost" id="btn-edit" onclick="toggleEdit()">並び替え</button>
         <button class="btn btn-sm btn-ghost" id="btn-dark" onclick="toggleDark()">🌙 ダーク</button>
         <span class="spacer"></span>
-        <button class="btn btn-sm btn-del" onclick="resetChecks()">チェック全解除</button>
-        <button class="btn btn-sm btn-primary" onclick="selectAllChecks()">チェック全選択</button>
+        <button class="btn btn-sm btn-del" onclick="resetChecks()">☑️全解除</button>
+        <button class="btn btn-sm btn-primary" onclick="selectAllChecks()">☑️全選択</button>
       </div>
-      <div class="legend" id="legend"></div>
       <div class="year-nav">
         <button class="btn btn-sm btn-ghost" onclick="changeYear(-1)">◀ 前年</button>
         <span id="year-label" class="year-label"></span>
@@ -332,6 +335,7 @@
           <tbody id="sched-body"></tbody>
         </table>
       </div>
+      <div class="legend" id="legend" style="margin-top:12px"></div>
       <p class="hint" style="margin-top:10px">各マスをタップするたびに進捗が段階的に進みます（例：委託契約書→契約書変更申請中→…→完了→未着手に戻る）。<b>総会はタップすると9項目のチェックリストが開き、全部チェックで総会完了になります。</b>進捗は西暦年ごとに記録されます。</p>
 
     </div>
@@ -524,9 +528,11 @@ const STORE='kanken_props_v1', CHECKS='kanken_checks_v1',
       TODOS='kanken_todos_v1', DARK='kanken_dark_v1';
 const YEARSEL='kanken_year_v1';
 const MASTERKEY='kanken_master_v1';
+const DONEDATES='kanken_donedates_v1';
 let props  = JSON.parse(localStorage.getItem(STORE)  || '[]');
 let checks = JSON.parse(localStorage.getItem(CHECKS) || '{}'); // { year:{ id:{ key:stageIndex } } }
 let todos  = JSON.parse(localStorage.getItem(TODOS)  || '{}'); // { id:[ {t,done,pri} ] }
+let doneDates = JSON.parse(localStorage.getItem(DONEDATES) || '{}'); // { year:{ id:{ key:'YYYY-MM-DD' } } } 完了にした日
 let editIdx=-1, editMode=false;
 let curYear = +localStorage.getItem(YEARSEL) || new Date().getFullYear();
 
@@ -576,6 +582,25 @@ function pid(p){ return (p.code && String(p.code).trim()) ? 'c:'+p.code : 'n:'+p
 function persist(){ localStorage.setItem(STORE, JSON.stringify(props)); }
 function persistChecks(){ localStorage.setItem(CHECKS, JSON.stringify(checks)); }
 function persistTodos(){ localStorage.setItem(TODOS, JSON.stringify(todos)); }
+/* ===== 完了日（各マスを完了にした日付） ===== */
+function todayYMD(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function setDoneDate(id,key,on){
+  const y=String(curYear);
+  if(on){
+    doneDates[y]=doneDates[y]||{}; doneDates[y][id]=doneDates[y][id]||{};
+    if(!doneDates[y][id][key]) doneDates[y][id][key]=todayYMD();
+  }else if(doneDates[y]&&doneDates[y][id]){
+    delete doneDates[y][id][key];
+    if(!Object.keys(doneDates[y][id]).length) delete doneDates[y][id];
+    if(!Object.keys(doneDates[y]).length) delete doneDates[y];
+  }
+  localStorage.setItem(DONEDATES, JSON.stringify(doneDates));
+}
+function doneDateLabel(id,key){
+  const v=doneDates[String(curYear)]&&doneDates[String(curYear)][id]&&doneDates[String(curYear)][id][key];
+  const m=/^\d{4}-(\d{2})-(\d{2})$/.exec(v||'');
+  return m ? (+m[1])+'/'+(+m[2]) : '';
+}
 
 /* ===== 内側チェックリスト（総会など sub を持つタスク） ===== */
 function subKey(key){ return key+'_sub'; }
@@ -608,6 +633,7 @@ function toggleSub(i){
   arr[i]=!arr[i];
   if(arr.some(Boolean)) yc[subCtx.id][k]=arr; else delete yc[subCtx.id][k];
   if(!Object.keys(yc[subCtx.id]).length) delete yc[subCtx.id];
+  setDoneDate(subCtx.id, subCtx.key, arr.filter(Boolean).length===t.sub.length);
   persistChecks(); renderSub();
 }
 function renderSub(){
@@ -616,7 +642,7 @@ function renderSub(){
   const st=subState(yearChecks()[subCtx.id]||{}, t);
   document.getElementById('sub-title').textContent=propName(subCtx.id);
   document.getElementById('sub-meta').textContent=
-    curYear+'年 ／ '+taskName(t)+' '+st.done+'/'+st.n+(st.all?'（完了）':'');
+    curYear+'年 ／ '+taskName(t)+' '+st.done+'/'+st.n+(st.all?'（完了'+(doneDateLabel(subCtx.id,subCtx.key)?' '+doneDateLabel(subCtx.id,subCtx.key):'')+'）':'');
   document.getElementById('sub-list').innerHTML=t.sub.map((it,i)=>{
     const on=!!st.arr[i];
     return `<div class="sub-row${on?' on':''}" onclick="toggleSub(${i})">
@@ -636,6 +662,7 @@ function cycleStage(id, key){
   yc[id]=yc[id]||{};
   if(idx===0) delete yc[id][key]; else yc[id][key]=idx;
   if(!Object.keys(yc[id]).length) delete yc[id];
+  setDoneDate(id, key, idx===t.stages.length-1);
   persistChecks(); renderSched();
 }
 function changeYear(delta){
@@ -645,7 +672,9 @@ function changeYear(delta){
 }
 function resetChecks(){
   if(!confirm(curYear+'年の進捗チェックをすべて解除します。よろしいですか？')) return;
-  delete checks[String(curYear)]; persistChecks(); renderSched();
+  delete checks[String(curYear)]; persistChecks();
+  delete doneDates[String(curYear)]; localStorage.setItem(DONEDATES, JSON.stringify(doneDates));
+  renderSched();
 }
 
 function selectAllChecks(){
@@ -659,20 +688,31 @@ function selectAllChecks(){
       yc[id]=yc[id]||{};
       if(t.sub) yc[id][subKey(t.key)]=t.sub.map(()=>true);
       else if(t.stages) yc[id][t.key]=t.stages.length-1;
+      setDoneDate(id, t.key, true);
     });
   });
   persistChecks(); renderSched();
 }
 
 /* ===== 月の列の表示・非表示 ===== */
+/* 進捗チェックと同じく、西暦年ごとに記録する { "2026":[2,7], ... } */
 const HIDECOLS='kanken_hidecols_v1';
-let hiddenMonths=[];
-try{ hiddenMonths=JSON.parse(localStorage.getItem(HIDECOLS)||'[]'); }catch(e){ hiddenMonths=[]; }
-function toggleMonthCol(m){
-  hiddenMonths = hiddenMonths.includes(m) ? hiddenMonths.filter(x=>x!==m) : hiddenMonths.concat(m);
-  localStorage.setItem(HIDECOLS, JSON.stringify(hiddenMonths)); renderSched();
+let hiddenByYear={};
+try{
+  const v=JSON.parse(localStorage.getItem(HIDECOLS)||'{}');
+  // 旧形式（全年共通の配列）は、いま選択中の年の設定として引き継ぐ
+  hiddenByYear = Array.isArray(v) ? (v.length?{[String(curYear)]:v}:{}) : (v||{});
+}catch(e){ hiddenByYear={}; }
+function hiddenMonthsOf(){ return hiddenByYear[String(curYear)]||[]; }
+function saveHiddenMonths(arr){
+  if(arr.length) hiddenByYear[String(curYear)]=arr; else delete hiddenByYear[String(curYear)];
+  localStorage.setItem(HIDECOLS, JSON.stringify(hiddenByYear)); renderSched();
 }
-function showAllMonthCols(){ hiddenMonths=[]; localStorage.setItem(HIDECOLS,'[]'); renderSched(); }
+function toggleMonthCol(m){
+  const cur=hiddenMonthsOf();
+  saveHiddenMonths(cur.includes(m) ? cur.filter(x=>x!==m) : cur.concat(m));
+}
+function showAllMonthCols(){ saveHiddenMonths([]); }
 
 /* ===== 月計算 ===== */
 function shift(m,off){ return ((m-1+off)%12+12)%12+1; }
@@ -758,6 +798,7 @@ function renderList(){
 /* ===== スケジュール描画 ===== */
 function renderSched(){
   const head=document.getElementById('sched-head');
+  const hiddenMonths=hiddenMonthsOf();
   const isHid=m=>hiddenMonths.includes(m);
   document.getElementById('sched-vis').innerHTML='<th class="nocol"></th><th class="pcol">'+
     (hiddenMonths.length?'<button class="vis-btn vis-all" onclick="showAllMonthCols()">全て表示</button>':'<span class="vis-cap">列の表示</span>')+'</th>'+
@@ -794,7 +835,7 @@ function renderSched(){
         const label=st.all?t.stages[t.stages.length-1]:t.stages[0];
         let cls,style,mark;
         if(st.done===0){ cls=''; style=`background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`; mark='□'; }
-        else if(st.all){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; mark='✓'; }
+        else if(st.all){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; const dt=doneDateLabel(id,t.key); mark=dt?'☑️'+dt:'✓'; }
         else { cls='prog'; style=`background:${hex2mid(t.color)};color:${t.color};border:1px solid ${t.color}`; mark=st.done+'/'+st.n; }
         return `<div class="chk ${cls}" style="${style}" onclick="openSub('${jsq(id)}','${t.key}')">`+
           `<span class="nm">${label}</span><span class="mk">${mark}</span></div>`;
@@ -802,7 +843,7 @@ function renderSched(){
       const idx=cdone[t.key]||0, last=t.stages.length-1, label=t.stages[Math.min(idx,last)];
       let cls,style,mark;
       if(idx===0){ cls=''; style=`background:${hex2bg(t.color)};color:${t.color};border:1px solid ${hex2bd(t.color)}`; mark='□'; }
-      else if(idx>=last){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; mark='✓'; }
+      else if(idx>=last){ cls='done'; style=`background:${t.color};border:1px solid ${t.color}`; const dt=doneDateLabel(id,t.key); mark=dt?'☑️'+dt:'✓'; }
       else { cls='prog'; style=`background:${hex2mid(t.color)};color:${t.color};border:1px solid ${t.color}`; mark='●'+idx; }
       return `<div class="chk ${cls}" style="${style}" onclick="cycleStage('${jsq(id)}','${t.key}')">`+
         `<span class="nm">${label}</span><span class="mk">${mark}</span></div>`;
